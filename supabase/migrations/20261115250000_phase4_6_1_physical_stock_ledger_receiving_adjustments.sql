@@ -183,8 +183,10 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.service_areas a WHERE a.id=p_service_area_id AND a.is_active=true) THEN
     RAISE EXCEPTION 'Choose an active service area' USING ERRCODE='23514';
   END IF;
-  IF p_items IS NULL OR pg_catalog.jsonb_typeof(p_items)<>'array'
-     OR pg_catalog.jsonb_array_length(p_items)<1 OR pg_catalog.jsonb_array_length(p_items)>100 THEN
+  IF p_items IS NULL OR pg_catalog.jsonb_typeof(p_items)<>'array' THEN
+    RAISE EXCEPTION 'Receipt items must be a JSON array' USING ERRCODE='22023';
+  END IF;
+  IF pg_catalog.jsonb_array_length(p_items)<1 OR pg_catalog.jsonb_array_length(p_items)>100 THEN
     RAISE EXCEPTION 'A receipt must contain between 1 and 100 SKU lines' USING ERRCODE='22023';
   END IF;
   IF EXISTS (
@@ -319,7 +321,7 @@ BEGIN
     RAISE EXCEPTION 'Only owner/admin can adjust inventory stock' USING ERRCODE='42501';
   END IF;
   IF p_inventory_id IS NULL OR p_idempotency_key IS NULL
-     OR p_adjustment_type NOT IN ('spoilage','damage','stocktake_adjustment')
+     OR p_adjustment_type IS NULL OR p_adjustment_type NOT IN ('spoilage','damage','stocktake_adjustment')
      OR p_quantity IS NULL OR p_quantity=0
      OR p_reason IS NULL OR pg_catalog.length(pg_catalog.btrim(p_reason))<5
      OR pg_catalog.length(p_reason)>500
