@@ -8,7 +8,7 @@ type Subscription = {
   duration_days: number | null; subtotal_paise: number; discount_paise: number;
   total_paise: number; paused_at: string | null; delivery_slot_id: string;
 };
-type Item = { id: string; subscription_id: string; product_name_snapshot: string | null;
+type Item = { id: string; subscription_id: string; vendor_id: string | null; product_name_snapshot: string | null;
   variant_name_snapshot: string | null; vendor_name_snapshot: string | null; milk_type: string | null;
   quantity: number; quantity_litres: number | null; price_per_delivery_paise: number };
 type Delivery = { id: string; subscription_id: string; delivery_date: string; status: string;
