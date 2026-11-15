@@ -1,6 +1,6 @@
 -- Phase 5.4 paid-only delivery generation, reservation and fulfilment security contract.
 BEGIN;
-SELECT extensions.plan(22);
+SELECT extensions.plan(23);
 
 SELECT extensions.ok(
   EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders'
@@ -141,7 +141,7 @@ SELECT extensions.ok(
 );
 SELECT extensions.ok(
   position('order_reservation_release' IN pg_get_functiondef('private.fail_subscription_delivery(uuid,text)'::regprocedure))>0
-  AND position('available_stock' NOT IN pg_get_functiondef('private.fail_subscription_delivery(uuid,text)'::regprocedure))>0,
+  AND position('available_stock' IN pg_get_functiondef('private.fail_subscription_delivery(uuid,text)'::regprocedure))=0,
   'failed delivery releases reserved stock without consuming on-hand stock'
 );
 SELECT extensions.ok(
