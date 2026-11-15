@@ -660,6 +660,9 @@ export type Database = {
           delivery_address_snapshot_at: string
           delivery_address_snapshot_source: string
           delivery_date: string | null
+          subscription_id: string | null
+          subscription_delivery_id: string | null
+          subscription_discount_paise: number
           delivery_fee_paise: number
           idempotency_key: string | null
           delivery_notes: string | null
@@ -683,6 +686,9 @@ export type Database = {
           delivery_address_snapshot_at?: string
           delivery_address_snapshot_source?: string
           delivery_date?: string | null
+          subscription_id?: string | null
+          subscription_delivery_id?: string | null
+          subscription_discount_paise?: number
           delivery_fee_paise?: number
           idempotency_key?: string | null
           delivery_notes?: string | null
@@ -703,6 +709,9 @@ export type Database = {
           customer_address_id?: string
           customer_id?: string
           delivery_date?: string | null
+          subscription_id?: string | null
+          subscription_delivery_id?: string | null
+          subscription_discount_paise?: number
           delivery_fee_paise?: number
           idempotency_key?: string | null
           delivery_notes?: string | null
@@ -1168,35 +1177,53 @@ export type Database = {
       }
       subscription_deliveries: {
         Row: {
+          assigned_at: string | null
           assigned_staff_id: string | null
           created_at: string
           delivered_at: string | null
           delivery_date: string
           delivery_notes: string | null
           delivery_slot_id: string
+          failed_at: string | null
           id: string
+          order_id: string | null
+          subtotal_paise: number | null
+          discount_paise: number
+          total_paise: number | null
           status: Database["public"]["Enums"]["delivery_status_enum"]
           subscription_id: string
         }
         Insert: {
+          assigned_at?: string | null
           assigned_staff_id?: string | null
           created_at?: string
           delivered_at?: string | null
           delivery_date: string
           delivery_notes?: string | null
           delivery_slot_id: string
+          failed_at?: string | null
           id?: string
+          order_id?: string | null
+          subtotal_paise?: number | null
+          discount_paise?: number
+          total_paise?: number | null
           status?: Database["public"]["Enums"]["delivery_status_enum"]
           subscription_id: string
         }
         Update: {
+          assigned_at?: string | null
           assigned_staff_id?: string | null
           created_at?: string
           delivered_at?: string | null
           delivery_date?: string
           delivery_notes?: string | null
           delivery_slot_id?: string
+          failed_at?: string | null
           id?: string
+          order_id?: string | null
+          subtotal_paise?: number | null
+          discount_paise?: number
+          total_paise?: number | null
           status?: Database["public"]["Enums"]["delivery_status_enum"]
           subscription_id?: string
         }
@@ -1419,6 +1446,7 @@ export type Database = {
           address_snapshot: Json | null
           auto_renew: boolean
           cancelled_at: string | null
+          delivery_generation_last_date: string | null
           created_at: string
           customer_address_id: string
           customer_id: string
@@ -1445,6 +1473,7 @@ export type Database = {
           address_snapshot?: Json | null
           auto_renew?: boolean
           cancelled_at?: string | null
+          delivery_generation_last_date?: string | null
           created_at?: string
           customer_address_id: string
           customer_id: string
@@ -1471,6 +1500,7 @@ export type Database = {
           address_snapshot?: Json | null
           auto_renew?: boolean
           cancelled_at?: string | null
+          delivery_generation_last_date?: string | null
           created_at?: string
           customer_address_id?: string
           customer_id?: string
@@ -1820,6 +1850,26 @@ export type Database = {
           resulting_status: Database["public"]["Enums"]["order_status_enum"]
           was_already_applied: boolean
         }[]
+      }
+      generate_subscription_deliveries: {
+        Args: { p_delivery_date: string }
+        Returns: { generated_count: number; skipped_count: number; replayed_count: number }[]
+      }
+      assign_subscription_delivery: {
+        Args: { p_delivery_id: string; p_staff_id: string }
+        Returns: { delivery_id: string; assigned_staff_id: string; delivery_status: Database["public"]["Enums"]["delivery_status_enum"]; was_replayed: boolean }[]
+      }
+      start_subscription_delivery: {
+        Args: { p_delivery_id: string }
+        Returns: { delivery_id: string; delivery_status: Database["public"]["Enums"]["delivery_status_enum"]; was_replayed: boolean }[]
+      }
+      complete_subscription_delivery: {
+        Args: { p_delivery_id: string }
+        Returns: { delivery_id: string; delivery_status: Database["public"]["Enums"]["delivery_status_enum"]; was_replayed: boolean }[]
+      }
+      fail_subscription_delivery: {
+        Args: { p_delivery_id: string; p_reason: string }
+        Returns: { delivery_id: string; delivery_status: Database["public"]["Enums"]["delivery_status_enum"]; was_replayed: boolean }[]
       }
       audit_inventory_reservations: {
         Args: Record<PropertyKey, never>
