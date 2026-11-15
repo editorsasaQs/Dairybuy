@@ -240,12 +240,18 @@ jobs:
             exit 1
           fi
 
+          if [[ "${DB_URL:-}" != postgresql://*127.0.0.1:* && "${DB_URL:-}" != postgresql://*localhost:* ]]; then
+            echo "::error::Refusing non-loopback local database URL: ${DB_URL:-<missing>}"
+            exit 1
+          fi
+
           {
             echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY_VALUE"
             echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000"
             echo "PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000"
             echo "MAILPIT_API_URL=http://127.0.0.1:54324"
+            echo "DATABASE_URL=$DB_URL"
           } >> "$GITHUB_ENV"
 
       - name: Install locked dependencies
@@ -281,7 +287,7 @@ jobs:
       - name: Assert checkout validation created no commerce records
         shell: bash
         run: |
-          psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 <<'SQL'
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
           DO $assertions$
           BEGIN
             IF EXISTS (SELECT 1 FROM public.orders) THEN
