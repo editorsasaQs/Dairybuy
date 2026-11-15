@@ -52,19 +52,19 @@ WHERE product_variant_id='ghee-red-cow-200ml'
   AND service_area_id='00000000-0000-0000-0000-000000000001';
 
 INSERT INTO public.inventory_movements(inventory_id,change_amount,movement_type,reference_id,notes,created_by)
-SELECT id,2,'order_reservation','c2222222-0000-4000-8000-000000000010','Audit active order reservation','c2222222-2222-4222-8222-222222222222'
+SELECT id,2,'order_reservation','c2222222-0000-4000-8000-000000000010','Audit active order reservation','c2222222-2222-4222-8222-222222222222'::uuid
 FROM public.inventory WHERE product_variant_id='ghee-red-cow-200ml' AND service_area_id='00000000-0000-0000-0000-000000000001'
 UNION ALL
-SELECT id,1,'order_reservation','c2222222-0000-4000-8000-000000000011','Audit delivered order reservation','c2222222-2222-4222-8222-222222222222'
+SELECT id,1,'order_reservation','c2222222-0000-4000-8000-000000000011','Audit delivered order reservation','c2222222-2222-4222-8222-222222222222'::uuid
 FROM public.inventory WHERE product_variant_id='ghee-red-cow-200ml' AND service_area_id='00000000-0000-0000-0000-000000000001'
 UNION ALL
-SELECT id,-1,'order_fulfilled','c2222222-0000-4000-8000-000000000011','Audit delivered order fulfillment','c2222222-2222-4222-8222-222222222222'
+SELECT id,-1,'order_fulfilled','c2222222-0000-4000-8000-000000000011','Audit delivered order fulfillment','c2222222-2222-4222-8222-222222222222'::uuid
 FROM public.inventory WHERE product_variant_id='ghee-red-cow-200ml' AND service_area_id='00000000-0000-0000-0000-000000000001'
 UNION ALL
-SELECT id,1,'order_reservation','c2222222-0000-4000-8000-000000000012','Audit cancelled order reservation','c2222222-2222-4222-8222-222222222222'
+SELECT id,1,'order_reservation','c2222222-0000-4000-8000-000000000012','Audit cancelled order reservation','c2222222-2222-4222-8222-222222222222'::uuid
 FROM public.inventory WHERE product_variant_id='ghee-red-cow-200ml' AND service_area_id='00000000-0000-0000-0000-000000000001'
 UNION ALL
-SELECT id,-1,'order_reservation_release','c2222222-0000-4000-8000-000000000012','Audit cancelled order release','c2222222-2222-4222-8222-222222222222'
+SELECT id,-1,'order_reservation_release','c2222222-0000-4000-8000-000000000012','Audit cancelled order release','c2222222-2222-4222-8222-222222222222'::uuid
 FROM public.inventory WHERE product_variant_id='ghee-red-cow-200ml' AND service_area_id='00000000-0000-0000-0000-000000000001';
 
 SELECT set_config('request.jwt.claim.sub','c1111111-1111-4111-8111-111111111111',true);
@@ -86,7 +86,7 @@ RESET ROLE;
 UPDATE public.inventory SET reserved_stock=2
 WHERE product_variant_id='ghee-red-cow-200ml' AND service_area_id='00000000-0000-0000-0000-000000000001';
 INSERT INTO public.inventory_movements(inventory_id,change_amount,movement_type,reference_id,notes,created_by)
-SELECT id,-1,'order_fulfilled','c2222222-0000-4000-8000-000000000011','Deliberate duplicate settlement fixture','c2222222-2222-4222-8222-222222222222'
+SELECT id,-1,'order_fulfilled','c2222222-0000-4000-8000-000000000011','Deliberate duplicate settlement fixture','c2222222-2222-4222-8222-222222222222'::uuid
 FROM public.inventory WHERE product_variant_id='ghee-red-cow-200ml' AND service_area_id='00000000-0000-0000-0000-000000000001';
 
 SET LOCAL ROLE authenticated;
