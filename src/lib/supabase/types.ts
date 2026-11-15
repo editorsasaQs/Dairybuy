@@ -2891,4 +2891,8 @@ export const Constants = {
     },
   },
 } as const
-\n// Backward-compatible domain aliases used by application services.\nexport type UserRole = Database["public"]["Enums"]["user_role_enum"];\nexport type StaffPermission = Database["public"]["Enums"]["staff_permission_enum"];\nexport type MilkType = Database["public"]["Enums"]["milk_type_enum"];\n
+
+// Backward-compatible domain aliases used by application services.
+export type UserRole = Database["public"]["Enums"]["user_role_enum"];
+export type StaffPermission = Database["public"]["Enums"]["staff_permission_enum"];
+export type MilkType = Database["public"]["Enums"]["milk_type_enum"];
