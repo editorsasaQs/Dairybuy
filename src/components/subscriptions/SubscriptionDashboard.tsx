@@ -97,7 +97,7 @@ export function SubscriptionDashboard() {
         <ul className="mt-2 space-y-2">{items.map((item) => <li key={item.id} className="flex flex-wrap justify-between gap-2 rounded-xl bg-[#f6fbfd] p-3 text-sm">
           <span>{item.product_name_snapshot || "Milk"} · {item.variant_name_snapshot || item.milk_type || "Milk"} <span className="text-muted-foreground">× {item.quantity} · {item.quantity_litres ?? "—"} L</span><span className="block text-xs text-muted-foreground">Vendor: {item.vendor_name_snapshot || "Selected vendor"}</span></span>
           <strong>{money(item.price_per_delivery_paise * item.quantity)}/day</strong>
-          {canManage && item.milk_type !== "canteen" ? <div className="w-full border-t border-border pt-3">
+          {sub.status === "active" && item.milk_type !== "canteen" ? <div className="w-full border-t border-border pt-3">
             <p className="text-xs font-semibold">Schedule a vendor change</p>
             <div className="mt-2 flex flex-wrap items-end gap-2">
               <label className="grid gap-1 text-xs">New vendor<select value={vendorChoice[item.id] || ""} onChange={(event) => setVendorChoice((current) => ({ ...current, [item.id]: event.target.value }))} className="min-h-10 rounded-lg border border-border bg-white px-2 text-sm"><option value="">Choose approved vendor</option>{vendors.filter((vendor) => vendor.orderingEnabled && vendor.id !== item.vendor_id && vendor.verifiedOptions.some((option) => option.type === item.milk_type)).map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}</select></label>
