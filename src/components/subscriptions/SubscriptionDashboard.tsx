@@ -13,7 +13,8 @@ type Item = { id: string; subscription_id: string; product_name_snapshot: string
   quantity: number; quantity_litres: number | null; price_per_delivery_paise: number };
 type Delivery = { id: string; subscription_id: string; delivery_date: string; status: string;
   delivery_notes: string | null; order_id: string | null; delivery_slot_id: string };
-type Slot = { id: string; label: string; start_time: string; end_time: string };\ntype Vendor = { id: string; name: string; orderingEnabled: boolean; verifiedOptions: Array<{ type: string }> };
+type Slot = { id: string; label: string; start_time: string; end_time: string };
+type Vendor = { id: string; name: string; orderingEnabled: boolean; verifiedOptions: Array<{ type: string }> };
 type Payload = { subscriptions: Subscription[]; items: Item[]; deliveries: Delivery[]; slots: Slot[] };
 
 function money(paise: number) {
@@ -25,7 +26,10 @@ function dateLabel(value: string | null) {
 }
 
 export function SubscriptionDashboard() {
-  const [data, setData] = useState<Payload>({ subscriptions: [], items: [], deliveries: [], slots: [] });\n  const [vendors, setVendors] = useState<Vendor[]>([]);\n  const [vendorChoice, setVendorChoice] = useState<Record<string, string>>({});\n  const [vendorDate, setVendorDate] = useState<Record<string, string>>({});
+  const [data, setData] = useState<Payload>({ subscriptions: [], items: [], deliveries: [], slots: [] });
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [vendorChoice, setVendorChoice] = useState<Record<string, string>>({});
+  const [vendorDate, setVendorDate] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -33,10 +37,14 @@ export function SubscriptionDashboard() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/subscriptions", { cache: "no-store" });
-      const payload = await response.json();
+      const [response, vendorResponse] = await Promise.all([
+        fetch("/api/subscriptions", { cache: "no-store" }),
+        fetch("/api/vendors/milk", { cache: "no-store" }),
+      ]);
+      const [payload, vendorPayload] = await Promise.all([response.json(), vendorResponse.json()]);
       if (!response.ok || !payload.success) throw new Error(payload.error || "Unable to load subscriptions.");
       setData(payload.data as Payload);
+      if (vendorResponse.ok && vendorPayload.success) setVendors(vendorPayload.data.vendors as Vendor[]);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to load subscriptions.");
     } finally { setLoading(false); }
