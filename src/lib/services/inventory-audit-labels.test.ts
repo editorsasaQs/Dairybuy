@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterInventoryAuditFindings, resolveInventoryAuditLabels } from "./inventory-audit-labels";
+import { filterInventoryAuditByArea, filterInventoryAuditFindings, resolveInventoryAuditLabels } from "./inventory-audit-labels";
 
 const finding = {
   product_variant_id: "cow-milk-500",
@@ -62,5 +62,26 @@ describe("filterInventoryAuditFindings", () => {
 
   it("fails open to all findings for an unknown URL filter", () => {
     expect(filterInventoryAuditFindings(findings, "unknown_type")).toEqual(findings);
+  });
+});
+
+describe("filterInventoryAuditByArea", () => {
+  const findings = [
+    { areaId: "topsia", inventory_id: "inventory-1" },
+    { areaId: "park-circus", inventory_id: "inventory-2" },
+    { areaId: null, inventory_id: "inventory-3" },
+  ];
+
+  it("filters findings to one selected service area", () => {
+    expect(filterInventoryAuditByArea(findings, "topsia")).toEqual([findings[0]]);
+  });
+
+  it("can show findings without an assigned service area", () => {
+    expect(filterInventoryAuditByArea(findings, "unassigned")).toEqual([findings[2]]);
+  });
+
+  it("returns all findings for no or unknown area filters", () => {
+    expect(filterInventoryAuditByArea(findings, null)).toEqual(findings);
+    expect(filterInventoryAuditByArea(findings, "unknown-area")).toEqual(findings);
   });
 });
