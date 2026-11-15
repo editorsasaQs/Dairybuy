@@ -187,7 +187,7 @@ SELECT extensions.is(
 );
 RESET ROLE;
 SELECT extensions.throws_ok(
- $UPDATE public.inventory_movements SET notes='tampered' WHERE movement_type='stock_receipt'$,
+ $$UPDATE public.inventory_movements SET notes='tampered' WHERE movement_type='stock_receipt'$$,
  '55000',NULL,'inventory movement rows cannot be edited after creation'
 );
 
