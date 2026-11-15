@@ -2,7 +2,7 @@
 -- Structural assertions for the production RPC; the shell harness separately
 -- exercises concurrent PostgreSQL sessions against the same row-lock strategy.
 BEGIN;
-SELECT extensions.plan(6);
+SELECT extensions.plan(8);
 
 SELECT extensions.ok(
   to_regprocedure('private.create_cod_order(uuid,uuid,date,uuid,text)') IS NOT NULL,
@@ -42,3 +42,21 @@ SELECT extensions.ok(
 
 SELECT * FROM extensions.finish();
 ROLLBACK;
+
+-- Phase 4.4.6.4: SKU-accurate reservation regression.
+SELECT extensions.ok(
+  position('pg_catalog.floor(l.litres)::integer * l.quantity' IN pg_get_functiondef(
+    'private.create_cod_order(uuid,uuid,date,uuid,text)'::regprocedure
+  )) > 0,
+  'each whole-litre pack is reserved against the selected 1 L SKU per cart line'
+);
+SELECT extensions.ok(
+  position('l.half_variant_id, l.quantity AS pack_count' IN pg_get_functiondef(
+    'private.create_cod_order(uuid,uuid,date,uuid,text)'::regprocedure
+  )) > 0
+  AND position('pg_catalog.floor(l.litres * l.quantity)' IN pg_get_functiondef(
+    'private.create_cod_order(uuid,uuid,date,uuid,text)'::regprocedure
+  )) = 0,
+  '500 ml remainder packs retain the selected 500 ml SKU and quantity'
+);
+
