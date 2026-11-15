@@ -14,7 +14,8 @@ function formatStock(value: number) {
 
 export default async function AdminInventoryAuditPage({ searchParams }: { searchParams: Promise<{ type?: string | string[]; area?: string | string[] }> }) {
   const query = await searchParams;
-  const requestedType = Array.isArray(query.type) ? query.type[0] : query.type;\n  const requestedArea = Array.isArray(query.area) ? query.area[0] : query.area;
+  const requestedType = Array.isArray(query.type) ? query.type[0] : query.type;
+  const requestedArea = Array.isArray(query.area) ? query.area[0] : query.area;
   const supabase = await createSupabaseServerClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect("/login?next=/admin/inventory/audit");
