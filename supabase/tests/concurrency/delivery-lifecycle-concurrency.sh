@@ -56,13 +56,13 @@ VALUES
  ('$ADDRESS'::uuid,'$CUSTOMER'::uuid,'$AREA'::uuid,'Lifecycle Customer','9000000444',
   'Lifecycle Race Address','700046',true);
 
+-- A customer may have only one active cart. Create the first cart,
+-- place its order (which converts it), then create the next active cart.
 INSERT INTO public.carts(id,customer_id,status)
-VALUES ('$CART_A'::uuid,'$CUSTOMER'::uuid,'active'),
-       ('$CART_B'::uuid,'$CUSTOMER'::uuid,'active');
+VALUES ('$CART_A'::uuid,'$CUSTOMER'::uuid,'active');
 
 INSERT INTO public.cart_items(cart_id,product_variant_id,vendor_id,milk_type,quantity,unit_price_paise)
-VALUES ('$CART_A'::uuid,'$VARIANT',NULL,NULL,1,17900),
-       ('$CART_B'::uuid,'$VARIANT',NULL,NULL,1,17900);
+VALUES ('$CART_A'::uuid,'$VARIANT',NULL,NULL,1,17900);
 
 UPDATE public.inventory SET available_stock=2,reserved_stock=0,safety_stock=0
  WHERE product_variant_id='$VARIANT' AND service_area_id='$AREA'::uuid;
@@ -93,6 +93,22 @@ SQL
 }
 
 ORDER_DELIVERY="$(create_order "$KEY_A" | grep -Eo '[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}' | tail -n 1)"
+
+# The first COD RPC converts CART_A. Only then may this customer open CART_B.
+psql "$DB_URL" -v ON_ERROR_STOP=1 <<SQL
+DO \$assert_first_cart\$
+BEGIN
+ IF NOT EXISTS (SELECT 1 FROM public.carts WHERE id='$CART_A'::uuid AND status='converted') THEN
+   RAISE EXCEPTION 'First COD order did not convert its active cart';
+ END IF;
+END
+\$assert_first_cart\$;
+INSERT INTO public.carts(id,customer_id,status)
+VALUES ('$CART_B'::uuid,'$CUSTOMER'::uuid,'active');
+INSERT INTO public.cart_items(cart_id,product_variant_id,vendor_id,milk_type,quantity,unit_price_paise)
+VALUES ('$CART_B'::uuid,'$VARIANT',NULL,NULL,1,17900);
+SQL
+
 ORDER_CANCEL_RACE="$(create_order "$KEY_B" | grep -Eo '[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}' | tail -n 1)"
 if [[ -z "$ORDER_DELIVERY" || -z "$ORDER_CANCEL_RACE" ]]; then
   echo "Could not create both lifecycle COD fixture orders"
