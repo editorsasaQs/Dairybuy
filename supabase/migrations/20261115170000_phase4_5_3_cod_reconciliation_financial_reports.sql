@@ -489,19 +489,19 @@ BEGIN
   END IF;
   RETURN QUERY
   SELECT o.id,o.order_number::text,o.delivery_date, o.service_area_id,sa.name::text,
-    ds.label::text,c.collected_by_staff_id,COALESCE(pr.full_name,au.email,'Delivery staff')::text,
-    c.id,c.status,c.amount_collected_paise,o.total_paise,
-    (c.amount_collected_paise-o.total_paise),c.collected_at,
+    ds.label::text,c.collected_by_staff_id,COALESCE(pr.full_name,au.email,'Not recorded')::text,
+    c.id,COALESCE(c.status,'not_recorded'),COALESCE(c.amount_collected_paise,0),o.total_paise,
+    (COALESCE(c.amount_collected_paise,0)-o.total_paise),c.collected_at,
     h.id,h.handover_number,h.status,h.expected_amount_paise,h.received_amount_paise
-  FROM public.cod_collections c
-  JOIN public.orders o ON o.id=c.order_id
+  FROM public.orders o
   JOIN public.service_areas sa ON sa.id=o.service_area_id
   JOIN public.delivery_slots ds ON ds.id=o.delivery_slot_id
+  LEFT JOIN public.cod_collections c ON c.order_id=o.id
   LEFT JOIN public.profiles pr ON pr.id=c.collected_by_staff_id
   LEFT JOIN auth.users au ON au.id=c.collected_by_staff_id
   LEFT JOIN public.delivery_cash_handover_items hi ON hi.collection_id=c.id
   LEFT JOIN public.delivery_cash_handovers h ON h.id=hi.handover_id
-  WHERE o.order_type='one_time' AND o.payment_method='cod'
+  WHERE o.order_type='one_time' AND o.payment_method='cod' AND o.status='delivered'
     AND o.delivery_date BETWEEN p_from_date AND p_to_date
     AND (p_service_area_id IS NULL OR o.service_area_id=p_service_area_id)
     AND (p_staff_id IS NULL OR c.collected_by_staff_id=p_staff_id)
