@@ -1,6 +1,6 @@
 -- Phase 5.3 lifecycle RPC security and contract checks.
 BEGIN;
-SELECT extensions.plan(17);
+SELECT extensions.plan(19);
 
 SELECT extensions.ok(
   to_regclass('public.subscription_item_vendor_changes') IS NOT NULL
