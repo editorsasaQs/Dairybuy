@@ -16,13 +16,17 @@ SELECT extensions.ok(
 );
 SELECT extensions.ok(
   (SELECT prosecdef AND proconfig @> ARRAY['search_path=""']
-   FROM pg_proc WHERE oid='private.receive_inventory_stock(varchar,uuid,text,text,jsonb,uuid)'::regprocedure),
-  'vendor receiving RPC is SECURITY DEFINER with empty search_path'
+   FROM pg_proc WHERE oid='private.receive_inventory_stock(varchar,uuid,text,text,jsonb,uuid)'::regprocedure)
+  AND strpos(pg_get_functiondef('private.receive_inventory_stock(varchar,uuid,text,text,jsonb,uuid)'::regprocedure),
+    'pg_advisory_xact_lock')>0,
+  'vendor receiving RPC is hardened and serializes concurrent idempotent retries'
 );
 SELECT extensions.ok(
   (SELECT prosecdef AND proconfig @> ARRAY['search_path=""']
-   FROM pg_proc WHERE oid='private.adjust_inventory_stock(uuid,text,integer,text,text,uuid)'::regprocedure),
-  'stock adjustment RPC is SECURITY DEFINER with empty search_path'
+   FROM pg_proc WHERE oid='private.adjust_inventory_stock(uuid,text,integer,text,text,uuid)'::regprocedure)
+  AND strpos(pg_get_functiondef('private.adjust_inventory_stock(uuid,text,integer,text,text,uuid)'::regprocedure),
+    'pg_advisory_xact_lock')>0,
+  'stock adjustment RPC is hardened and serializes concurrent idempotent retries'
 );
 SELECT extensions.ok(
   (SELECT prosecdef AND proconfig @> ARRAY['search_path=""']
