@@ -88,13 +88,13 @@ SELECT extensions.ok(
   position('v_order.status <> ''delivered''' IN pg_get_functiondef(
     'private.review_cod_cash_collection(uuid,text,text)'::regprocedure
   )) > 0
-  AND position('v_order.order_type <> ''one_time''' IN pg_get_functiondef(
+  AND position('v_order.order_type NOT IN (''one_time'',''subscription'')' IN pg_get_functiondef(
     'private.review_cod_cash_collection(uuid,text,text)'::regprocedure
   )) > 0
   AND position('v_order.payment_method <> ''cod''' IN pg_get_functiondef(
     'private.review_cod_cash_collection(uuid,text,text)'::regprocedure
   )) > 0,
-  'only delivered one-time COD orders can be reviewed'
+  'only delivered COD fulfilment orders (one-time or subscription) can be reviewed'
 );
 SELECT extensions.ok(
   position('v_collection.amount_collected_paise <> v_order.total_paise' IN pg_get_functiondef(
@@ -181,13 +181,13 @@ SELECT extensions.ok(
   'admin read RPC returns the collection evidence and review outcome fields'
 );
 SELECT extensions.ok(
-  position('o.order_type = ''one_time''' IN pg_get_functiondef(
+  position('o.order_type IN (''one_time'',''subscription'')' IN pg_get_functiondef(
     'private.get_admin_cod_collection(uuid)'::regprocedure
   )) > 0
   AND position('o.payment_method = ''cod''' IN pg_get_functiondef(
     'private.get_admin_cod_collection(uuid)'::regprocedure
   )) > 0,
-  'admin read RPC is scoped to one-time COD orders'
+  'admin read RPC is scoped to one-time and subscription COD orders'
 );
 SELECT extensions.ok(
   position('payment_status' IN pg_get_functiondef(

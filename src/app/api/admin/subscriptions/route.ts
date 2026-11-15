@@ -30,6 +30,41 @@ export async function POST(request: Request) {
         rpc = "assign_subscription_delivery"; args = { p_delivery_id: input["deliveryId"], p_staff_id: input["staffId"] }; break;
       case "start": rpc = "start_subscription_delivery"; args = { p_delivery_id: input["deliveryId"] }; break;
       case "complete": rpc = "complete_subscription_delivery"; args = { p_delivery_id: input["deliveryId"] }; break;
+      case "record_cod": {
+        const amountRupees = Number(input["amountRupees"]);
+        const amountPaise = Math.round(amountRupees * 100);
+        if (!Number.isFinite(amountRupees) || !Number.isSafeInteger(amountPaise) || amountPaise <= 0) return NextResponse.json({ success: false, error: "Enter the positive cash amount received in rupees." }, { status: 400, headers });
+        const { data: delivery, error: deliveryError } = await supabase.from("subscription_deliveries")
+          .select("order_id").eq("id", input["deliveryId"]).eq("assigned_staff_id", user.id).eq("status", "delivered").maybeSingle();
+        if (deliveryError || !delivery?.order_id) return NextResponse.json({ success: false, error: "Only your completed subscription delivery can accept cash." }, { status: 403, headers });
+        const { data, error } = await supabase.rpc("record_cod_cash_collection" as never, {
+          p_order_id: delivery.order_id, p_amount_collected_paise: amountPaise,
+          p_receipt_reference: null, p_collection_notes: "Subscription delivery cash recorded by assigned staff",
+        } as never);
+        if (error) {
+          const expected = ["22023", "23514", "23505", "42501", "P0002"].includes(error.code ?? "");
+          return NextResponse.json({ success: false, error: expected ? error.message : "Cash collection could not be recorded." }, { status: expected ? 422 : 503, headers });
+        }
+        return NextResponse.json({ success: true, data }, { headers });
+      }
+      case "verify_cod":
+      case "reject_cod": {
+        if (!admin) return NextResponse.json({ success: false, error: "Only owner/admin can review subscription COD collections." }, { status: 403, headers });
+        const decision = input["action"] === "verify_cod" ? "verify" : "reject";
+        const note = typeof input["reason"] === "string" ? input["reason"].trim() : "";
+        if (decision === "reject" && (note.length < 5 || note.length > 500)) return NextResponse.json({ success: false, error: "A rejection reason of 5–500 characters is required." }, { status: 400, headers });
+        const { data: delivery, error: deliveryError } = await supabase.from("subscription_deliveries")
+          .select("order_id").eq("id", input["deliveryId"]).maybeSingle();
+        if (deliveryError || !delivery?.order_id) return NextResponse.json({ success: false, error: "Subscription delivery order not found." }, { status: 404, headers });
+        const { data, error } = await supabase.rpc("review_cod_cash_collection" as never, {
+          p_order_id: delivery.order_id, p_decision: decision, p_note: decision === "reject" ? note : null,
+        } as never);
+        if (error) {
+          const expected = ["22023", "23514", "42501", "P0002"].includes(error.code ?? "");
+          return NextResponse.json({ success: false, error: expected ? error.message : "COD collection review failed." }, { status: expected ? 422 : 503, headers });
+        }
+        return NextResponse.json({ success: true, data }, { headers });
+      }
       case "fail":
         if (!admin) return NextResponse.json({ success: false, error: "Only owner/admin can resolve failed deliveries." }, { status: 403, headers });
         if (typeof input["reason"] !== "string" || !input["reason"].trim() || input["reason"].length > 500) return NextResponse.json({ success: false, error: "A failure reason of 1–500 characters is required." }, { status: 400, headers });

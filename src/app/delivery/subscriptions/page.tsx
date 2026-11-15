@@ -17,7 +17,7 @@ export default async function StaffSubscriptionDeliveriesPage() {
   const { data, error } = await supabase.from("subscription_deliveries")
     .select("id,subscription_id,delivery_date,status,delivery_notes,assigned_staff_id,order_id")
     .eq("assigned_staff_id", user.id)
-    .in("status", ["assigned", "out_for_delivery"])
+    .in("status", ["assigned", "out_for_delivery", "delivered"])
     .order("delivery_date", { ascending: true }).limit(100);
   if (error) throw new Error("Unable to load your assigned subscription deliveries.");
   return <main className="db-page py-(--section-y)"><Container className="max-w-4xl">

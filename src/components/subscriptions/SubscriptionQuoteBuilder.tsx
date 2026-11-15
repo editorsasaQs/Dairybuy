@@ -36,6 +36,10 @@ export function SubscriptionQuoteBuilder() {
   const [quantity, setQuantity] = useState("1");
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoting, setQuoting] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Array<{ product_variant_id: string; vendor_id: string; milk_type: string; quantity: number; quantity_litres: number }>>([]);
+  const [creating, setCreating] = useState(false);
+  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
+  const [createdSubscription, setCreatedSubscription] = useState<{ subscription_number: string; subscription_status: string } | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -70,6 +74,13 @@ export function SubscriptionQuoteBuilder() {
     ? (canteen?.orderable ? canteen.id : "")
     : (vendorOptions.some((row) => row.id === vendorId) ? vendorId : vendorOptions[0]?.id || "");
 
+  function invalidateQuote() {
+    setQuote(null);
+    setSelectedItems([]);
+    setCreatedSubscription(null);
+    setIdempotencyKey(null);
+  }
+
   async function getQuote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setQuote(null); setQuoting(true);
     try {
@@ -82,18 +93,44 @@ export function SubscriptionQuoteBuilder() {
         referenceVariantId = option?.variantId1l || option?.variantId500ml || "";
       }
       if (!addressId || !slotId || !product || !chosenVendorId || !referenceVariantId) throw new Error("Choose an active address, delivery slot, milk and approved vendor.");
+      const items = [{ product_variant_id: referenceVariantId, vendor_id: chosenVendorId, milk_type: isCanteen ? "canteen" : milkType, quantity: Number(quantity), quantity_litres: Number(litres) }];
       const response = await fetch("/api/subscriptions/quote", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           addressId, deliverySlotId: slotId, startDate, planType: plan,
-          items: [{ product_variant_id: referenceVariantId, vendor_id: chosenVendorId, milk_type: isCanteen ? "canteen" : milkType, quantity: Number(quantity), quantity_litres: Number(litres) }],
+          items,
         }),
       });
       const payload = await response.json();
       if (!response.ok || !payload.success) throw new Error(payload.error || "Quote unavailable.");
       setQuote(payload.data.quote as Quote);
+      setSelectedItems(items);
+      setCreatedSubscription(null);
+      setIdempotencyKey(null);
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to calculate quote."); }
     finally { setQuoting(false); }
+  }
+
+  async function createCodSubscription() {
+    if (!quote || !selectedItems.length) return;
+    setCreating(true); setError("");
+    const requestKey = idempotencyKey || crypto.randomUUID();
+    setIdempotencyKey(requestKey);
+    try {
+      const response = await fetch("/api/subscriptions/checkout", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          addressId, deliverySlotId: slotId, startDate, planType: plan,
+          items: selectedItems, idempotencyKey: requestKey,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.error || "Subscription could not be started.");
+      const result = Array.isArray(payload.data) ? payload.data[0] : payload.data;
+      if (!result || result.subscription_status !== "active") throw new Error("Subscription activation was not confirmed. Please contact support before retrying.");
+      setCreatedSubscription({ subscription_number: result.subscription_number, subscription_status: result.subscription_status });
+    } catch (e) { setError(e instanceof Error ? e.message : "Subscription could not be started."); }
+    finally { setCreating(false); }
   }
 
   if (loading) return <p className="rounded-2xl bg-white p-5 text-sm" role="status">Loading subscription options…</p>;
@@ -102,33 +139,33 @@ export function SubscriptionQuoteBuilder() {
     {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}
     <form onSubmit={getQuote} className="grid gap-4 rounded-3xl border-2 border-white bg-white p-5 shadow-sm sm:grid-cols-2 sm:p-7">
       <label className="grid gap-1 text-sm font-semibold sm:col-span-2">Delivery address
-        <select required value={addressId} onChange={(e) => setAddressId(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="">Choose address</option>{addresses.map((a) => <option key={a.id} value={a.id}>{a.address_type} · {a.recipient_name} · {a.address_line1} · {a.pincode}</option>)}</select>
+        <select required value={addressId} onChange={(e) => { setAddressId(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="">Choose address</option>{addresses.map((a) => <option key={a.id} value={a.id}>{a.address_type} · {a.recipient_name} · {a.address_line1} · {a.pincode}</option>)}</select>
       </label>
       <label className="grid gap-1 text-sm font-semibold">Delivery slot
-        <select required value={slotId} onChange={(e) => setSlotId(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="">Choose slot</option>{slots.map((s) => <option key={s.id} value={s.id}>{s.label} · {s.start_time.slice(0,5)}–{s.end_time.slice(0,5)}</option>)}</select>
+        <select required value={slotId} onChange={(e) => { setSlotId(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="">Choose slot</option>{slots.map((s) => <option key={s.id} value={s.id}>{s.label} · {s.start_time.slice(0,5)}–{s.end_time.slice(0,5)}</option>)}</select>
       </label>
       <label className="grid gap-1 text-sm font-semibold">First delivery date
-        <input required type="date" min={startDate} value={startDate} onChange={(e) => setStartDate(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal" />
+        <input required type="date" min={startDate} value={startDate} onChange={(e) => { setStartDate(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal" />
       </label>
       <label className="grid gap-1 text-sm font-semibold">Plan
-        <select value={plan} onChange={(e) => setPlan(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="7_day">7 days · no discount</option><option value="30_day">30 days · ₹60 basket discount</option></select>
+        <select value={plan} onChange={(e) => { setPlan(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="7_day">7 days · no discount</option><option value="30_day">30 days · ₹60 basket discount</option></select>
       </label>
       <label className="grid gap-1 text-sm font-semibold">Milk
-        <select value={productId} onChange={(e) => { setProductId(e.target.value); setQuote(null); }} className="min-h-12 rounded-xl border border-border px-3 font-normal">{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+        <select value={productId} onChange={(e) => { setProductId(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal">{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
       </label>
       {!isCanteen ? <label className="grid gap-1 text-sm font-semibold">Milk type
-        <select value={milkType} onChange={(e) => setMilkType(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="cow">Cow milk</option><option value="buffalo">Buffalo milk</option></select>
+        <select value={milkType} onChange={(e) => { setMilkType(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="cow">Cow milk</option><option value="buffalo">Buffalo milk</option></select>
       </label> : null}
       <label className="grid gap-1 text-sm font-semibold">{isCanteen ? "Canteen supplier" : "Milk vendor"}
-        <select required disabled={!!isCanteen} value={effectiveVendorId} onChange={(e) => setVendorId(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal">
+        <select required disabled={!!isCanteen} value={effectiveVendorId} onChange={(e) => { setVendorId(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal">
           {isCanteen ? <option value={canteen?.id || ""}>{canteen?.name || "Canteen Milk Centre"}</option> : vendorOptions.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
         </select>
       </label>
       <label className="grid gap-1 text-sm font-semibold">Litres per day
-        <select value={litres} onChange={(e) => setLitres(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal">{Array.from({length:20},(_,i)=>(i+1)*0.5).map((n) => <option key={n} value={n}>{n < 1 ? "500 ml" : n + " L"}</option>)}</select>
+        <select value={litres} onChange={(e) => { setLitres(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal">{Array.from({length:20},(_,i)=>(i+1)*0.5).map((n) => <option key={n} value={n}>{n < 1 ? "500 ml" : n + " L"}</option>)}</select>
       </label>
       <label className="grid gap-1 text-sm font-semibold">Quantity per day
-        <input type="number" min="1" max="100" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal" />
+        <input type="number" min="1" max="100" step="1" value={quantity} onChange={(e) => { setQuantity(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal" />
       </label>
       <button type="submit" disabled={quoting || !addresses.length || !slots.length || !products.length} className="min-h-12 rounded-full bg-[#573b75] px-5 py-3 text-sm font-bold text-white disabled:opacity-50 sm:col-span-2">{quoting ? "Calculating…" : "Calculate subscription quote"}</button>
     </form>
@@ -136,7 +173,11 @@ export function SubscriptionQuoteBuilder() {
       <p className="text-sm font-semibold text-highlight-ink">Server-calculated quote</p><h2 className="mt-1 text-2xl font-bold">{quote.duration_days}-day milk plan</h2><p className="mt-1 text-sm text-muted-foreground">{quote.start_date} to {quote.end_date}</p>
       <ul className="mt-4 space-y-2">{quote.items.map((item,index) => <li key={index} className="flex justify-between gap-3 border-b border-border py-2 text-sm"><span>{item.product_name_snapshot} · {item.variant_name_snapshot}<span className="block text-xs text-muted-foreground">{item.vendor_name_snapshot}</span></span><strong>{money(item.line_total_paise)}</strong></li>)}</ul>
       <div className="mt-4 space-y-2 text-sm"><div className="flex justify-between"><span>Plan subtotal</span><strong>{money(quote.subtotal_paise)}</strong></div><div className="flex justify-between"><span>Plan discount</span><strong>−{money(quote.discount_paise)}</strong></div><div className="flex justify-between border-t border-border pt-3 text-lg font-bold"><span>Total</span><span>{money(quote.total_paise)}</span></div></div>
-      <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-950">Payment gateway integration is not live yet. This is a quote only: no subscription is created, no payment intent is charged, and no delivery is scheduled.</p>
+      <div className="mt-5 rounded-2xl border border-border bg-[#f8f6fb] p-4">
+        <p className="text-sm font-semibold">Cash on delivery · pay per delivery</p>
+        <p className="mt-1 text-sm text-muted-foreground">No advance payment and no wallet. Your subscription schedules daily deliveries. Pay the delivery agent in cash for each delivery separately.</p>
+        {createdSubscription ? <p role="status" className="mt-3 rounded-xl bg-white p-3 text-sm font-semibold text-green-800">Subscription {createdSubscription.subscription_number} is active. Your first delivery is scheduled for {quote.start_date}. Cash is due separately on each delivery.</p> : <button type="button" onClick={() => void createCodSubscription()} disabled={creating || !selectedItems.length} className="mt-4 min-h-12 w-full rounded-full bg-[#573b75] px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{creating ? "Starting subscription…" : "Start subscription · COD per delivery"}</button>}
+      </div>
     </section> : null}
   </div>;
 }
