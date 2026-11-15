@@ -199,6 +199,9 @@ jobs:
       - name: Run Phase 5 subscription lifecycle regression
         run: supabase test db supabase/tests/database/phase5_subscription_lifecycle.test.sql
 
+      - name: Run Phase 5 subscription delivery and inventory regression
+        run: supabase test db supabase/tests/database/phase5_subscription_delivery_operations.test.sql
+
       - name: Run inventory reservation concurrency regression
         run: bash supabase/tests/concurrency/inventory-reservation-concurrency.sh
 
