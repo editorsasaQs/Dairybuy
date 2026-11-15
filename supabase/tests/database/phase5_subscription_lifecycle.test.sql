@@ -1,6 +1,6 @@
 -- Phase 5.3 lifecycle RPC security and contract checks.
 BEGIN;
-SELECT extensions.plan(17);
+SELECT extensions.plan(19);
 
 SELECT extensions.ok(
   to_regclass('public.subscription_item_vendor_changes') IS NOT NULL
@@ -105,6 +105,16 @@ SELECT extensions.ok(
   EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.subscriptions'::regclass
     AND conname='chk_subscription_active_requires_verified_payment' AND NOT convalidated),
   'active, paused and completed states require a trusted payment verification timestamp for all new writes'
+);
+
+SELECT extensions.ok(
+  position('release_subscription_order_reservation' IN pg_get_functiondef('private.pause_subscription(uuid)'::regprocedure))>0
+  AND position('Subscription paused before dispatch' IN pg_get_functiondef('private.pause_subscription(uuid)'::regprocedure))>0,
+  'pause releases reservations for already-generated unassigned deliveries without counting a customer skip'
+);
+SELECT extensions.ok(
+  position('greatest(1' IN pg_get_functiondef('private.resume_subscription(uuid)'::regprocedure))>0,
+  'same-day pause/resume still shifts the remaining subscription delivery schedule by one day'
 );
 
 SELECT * FROM extensions.finish();

@@ -85,6 +85,17 @@ jobs:
           src/app/login/page.tsx
           src/app/signup/page.tsx
           src/app/account/page.tsx
+          src/app/admin/subscriptions/page.tsx
+          src/app/api/admin/subscriptions/route.ts
+          src/app/api/cron/subscriptions/route.ts
+          src/app/api/subscriptions/quote/route.ts
+          src/app/api/subscriptions/route.ts
+          src/app/delivery/subscriptions/page.tsx
+          src/app/subscriptions/new/page.tsx
+          src/app/subscriptions/page.tsx
+          src/components/subscriptions/SubscriptionDashboard.tsx
+          src/components/subscriptions/SubscriptionOperations.tsx
+          src/components/subscriptions/SubscriptionQuoteBuilder.tsx
           src/app/orders/[id]/page.tsx
           src/app/admin/orders/page.tsx
           src/app/admin/inventory/audit/page.tsx

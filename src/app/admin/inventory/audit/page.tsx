@@ -13,10 +13,6 @@ function formatStock(value: number) {
 }
 
 export default async function AdminInventoryAuditPage({ searchParams }: { searchParams: Promise<{ type?: string | string[]; area?: string | string[]; product?: string | string[] }> }) {
-  const query = await searchParams;
-  const requestedType = Array.isArray(query.type) ? query.type[0] : query.type;
-  const requestedArea = Array.isArray(query.area) ? query.area[0] : query.area;
-  const requestedProduct = Array.isArray(query.product) ? query.product[0] : query.product;
   const supabase = await createSupabaseServerClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect("/login?next=/admin/inventory/audit");
@@ -27,6 +23,10 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
     .eq("user_id", user.id);
   if (roleError || !(roles ?? []).some((entry) => isAdminOrOwner(entry.role))) redirect("/account");
 
+  const query = await searchParams;
+  const requestedType = Array.isArray(query.type) ? query.type[0] : query.type;
+  const requestedArea = Array.isArray(query.area) ? query.area[0] : query.area;
+  const requestedProduct = Array.isArray(query.product) ? query.product[0] : query.product;
   const { data: findings, error: auditError } = await supabase.rpc("audit_inventory_reservations");
   const auditAvailable = !auditError;
   const rows = findings ?? [];
