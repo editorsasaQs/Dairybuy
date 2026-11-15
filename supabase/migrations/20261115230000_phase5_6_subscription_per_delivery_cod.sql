@@ -51,8 +51,8 @@ BEGIN
     '''Creates an idempotent pending online-payment intent only. Subscription remains pending_payment until trusted server-side verification; no deliveries are generated.''',
     '''Activates an idempotent COD subscription. Each future delivery is a separate pending COD receivable, recorded and verified independently.''');
   IF v_next=v_def
-     OR pg_catalog.position('''pending_payment'',p_start_date' IN v_next)>0
-     OR pg_catalog.position('''pending_online'',''pending'',''online''' IN v_next)>0 THEN
+     OR pg_catalog.strpos(v_next, '''pending_payment'',p_start_date')>0
+     OR pg_catalog.strpos(v_next, '''pending_online'',''pending'',''online''')>0 THEN
     RAISE EXCEPTION 'Subscription COD checkout patch did not match the expected source';
   END IF;
   EXECUTE v_next;
@@ -72,7 +72,7 @@ BEGIN
   v_next:=pg_catalog.replace(v_next,
     '''Paid subscription address snapshot is unavailable''',
     '''Active subscription address snapshot is unavailable''');
-  IF v_next=v_def OR pg_catalog.position('s.payment_verified_at IS NOT NULL' IN v_next)>0 THEN
+  IF v_next=v_def OR pg_catalog.strpos(v_next, 's.payment_verified_at IS NOT NULL')>0 THEN
     RAISE EXCEPTION 'Subscription address snapshot patch did not match the expected source';
   END IF;
   EXECUTE v_next;
@@ -98,10 +98,10 @@ BEGIN
     'RETURNING id,order_number INTO v_order_id,v_order_number;',
     'RETURNING id,order_number INTO v_order_id,v_order_number;'||E'\n\n    INSERT INTO public.payments(order_id,amount_paise,currency,gateway,status,method)\n    VALUES(v_order_id,v_total::integer,''INR'',''cod'',''pending'',''cod'');');
   IF v_next=v_def
-     OR pg_catalog.position('payment_verified_at IS NOT NULL' IN v_next)>0
-     OR pg_catalog.position('gateway_payment_id IS NOT NULL' IN v_next)>0
-     OR pg_catalog.position('''pending'',''cod'',p_delivery_date' IN v_next)=0
-     OR pg_catalog.position('INSERT INTO public.payments(order_id,amount_paise,currency,gateway,status,method)' IN v_next)=0 THEN
+     OR pg_catalog.strpos(v_next, 'payment_verified_at IS NOT NULL')>0
+     OR pg_catalog.strpos(v_next, 'gateway_payment_id IS NOT NULL')>0
+     OR pg_catalog.strpos(v_next, '''pending'',''cod'',p_delivery_date')=0
+     OR pg_catalog.strpos(v_next, 'INSERT INTO public.payments(order_id,amount_paise,currency,gateway,status,method)')=0 THEN
     RAISE EXCEPTION 'Subscription delivery COD generator patch did not match the expected source';
   END IF;
   EXECUTE v_next;
@@ -122,8 +122,8 @@ BEGIN
   v_next:=pg_catalog.replace(v_next,
     E'  SELECT EXISTS (\n    SELECT 1\n    FROM public.delivery_assignment_orders dao\n    JOIN public.delivery_assignments da\n      ON da.id=dao.delivery_assignment_id\n    WHERE dao.order_id=p_order_id\n      AND da.staff_id=v_actor\n      AND da.status IN (''assigned'',''in_progress'',''completed'')\n  ) INTO v_assignment_authorized;',
     E'  SELECT EXISTS (\n    SELECT 1 FROM public.delivery_assignment_orders dao\n    JOIN public.delivery_assignments da ON da.id=dao.delivery_assignment_id\n    WHERE dao.order_id=p_order_id AND da.staff_id=v_actor\n      AND da.status IN (''assigned'',''in_progress'',''completed'')\n  ) OR EXISTS (\n    SELECT 1 FROM public.subscription_deliveries sd\n    WHERE sd.order_id=p_order_id AND sd.assigned_staff_id=v_actor\n      AND sd.status=''delivered''\n  ) INTO v_assignment_authorized;');
-  IF v_next=v_def OR pg_catalog.position('subscription_deliveries sd' IN v_next)=0
-     OR pg_catalog.position('NOT IN (''one_time'',''subscription'')' IN v_next)=0 THEN
+  IF v_next=v_def OR pg_catalog.strpos(v_next, 'subscription_deliveries sd')=0
+     OR pg_catalog.strpos(v_next, 'NOT IN (''one_time'',''subscription'')')=0 THEN
     RAISE EXCEPTION 'COD collection recording patch did not match the expected source';
   END IF;
   EXECUTE v_next;
@@ -172,7 +172,7 @@ BEGIN
   v_next:=pg_catalog.replace(v_next,
     E'    IF NOT EXISTS (\n      SELECT 1 FROM public.delivery_assignment_orders dao\n      JOIN public.delivery_assignments da ON da.id=dao.delivery_assignment_id\n      WHERE dao.order_id=v_first.id AND da.staff_id=v_actor\n        AND da.delivery_date=v_first.delivery_date\n        AND da.delivery_slot_id=v_first.delivery_slot_id\n        AND da.service_area_id=v_first.service_area_id\n    ) THEN RAISE EXCEPTION ''Collection is not linked to the staff delivery assignment'' USING ERRCODE=''42501''; END IF;',
     E'    IF NOT (v_first.order_type=''subscription'' AND EXISTS (\n      SELECT 1 FROM public.subscription_deliveries sd\n      WHERE sd.order_id=v_first.id AND sd.assigned_staff_id=v_actor AND sd.status=''delivered''\n    )) AND NOT EXISTS (\n      SELECT 1 FROM public.delivery_assignment_orders dao\n      JOIN public.delivery_assignments da ON da.id=dao.delivery_assignment_id\n      WHERE dao.order_id=v_first.id AND da.staff_id=v_actor\n        AND da.delivery_date=v_first.delivery_date\n        AND da.delivery_slot_id=v_first.delivery_slot_id\n        AND da.service_area_id=v_first.service_area_id\n    ) THEN RAISE EXCEPTION ''Collection is not linked to the staff delivery assignment'' USING ERRCODE=''42501''; END IF;');
-  IF v_next=v_def OR pg_catalog.position('subscription_deliveries sd' IN v_next)=0 THEN
+  IF v_next=v_def OR pg_catalog.strpos(v_next, 'subscription_deliveries sd')=0 THEN
     RAISE EXCEPTION 'COD handover patch did not match the expected source';
   END IF;
   EXECUTE v_next;
@@ -191,7 +191,7 @@ BEGIN
   v_next:=pg_catalog.replace(v_next,
     E'    AND da.service_area_id=o.service_area_id AND o.status=''delivered''\n    AND o.order_type=''one_time'' AND o.payment_method=''cod''',
     E'    AND (o.order_type=''subscription'' OR da.service_area_id=o.service_area_id) AND o.status=''delivered''\n    AND o.order_type IN (''one_time'',''subscription'') AND o.payment_method=''cod''\n    AND ((o.order_type=''subscription'' AND EXISTS (SELECT 1 FROM public.subscription_deliveries sd WHERE sd.order_id=o.id AND sd.assigned_staff_id=auth.uid() AND sd.status=''delivered'')) OR (o.order_type=''one_time'' AND dao.order_id IS NOT NULL AND da.staff_id=auth.uid()))');
-  IF v_next=v_def OR pg_catalog.position('subscription_deliveries sd' IN v_next)=0 THEN
+  IF v_next=v_def OR pg_catalog.strpos(v_next, 'subscription_deliveries sd')=0 THEN
     RAISE EXCEPTION 'Staff COD handover queue patch did not match the expected source';
   END IF;
   EXECUTE v_next;
