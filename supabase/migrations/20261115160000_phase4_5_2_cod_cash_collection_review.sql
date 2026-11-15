@@ -59,7 +59,7 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
-  IF p_order_id IS NULL OR p_decision NOT IN ('verify','reject') THEN
+  IF p_order_id IS NULL OR p_decision IS NULL OR p_decision NOT IN ('verify','reject') THEN
     RAISE EXCEPTION 'A valid order and review decision are required'
       USING ERRCODE = '22023';
   END IF;
