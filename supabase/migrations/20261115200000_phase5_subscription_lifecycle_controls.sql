@@ -362,4 +362,13 @@ GRANT EXECUTE ON FUNCTION public.skip_subscription_delivery(uuid,date,text,uuid)
 GRANT EXECUTE ON FUNCTION public.cancel_subscription(uuid,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.change_subscription_item_vendor(uuid,uuid,varchar,date,uuid) TO authenticated;
 
+ALTER TABLE public.subscriptions
+  DROP CONSTRAINT IF EXISTS chk_subscription_active_requires_verified_payment;
+ALTER TABLE public.subscriptions
+  ADD CONSTRAINT chk_subscription_active_requires_verified_payment
+  CHECK (status NOT IN ('active','paused','completed') OR payment_verified_at IS NOT NULL)
+  NOT VALID;
+COMMENT ON CONSTRAINT chk_subscription_active_requires_verified_payment ON public.subscriptions IS
+  'A subscription cannot be active, paused or completed until a trusted server-side payment verification timestamp exists.';
+
 COMMIT;
