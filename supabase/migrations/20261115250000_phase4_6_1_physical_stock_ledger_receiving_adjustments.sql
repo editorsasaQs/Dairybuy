@@ -76,13 +76,13 @@ GRANT SELECT ON TABLE public.inventory_receipts,public.inventory_receipt_items,p
 
 DROP POLICY IF EXISTS inventory_receipts_read_admin ON public.inventory_receipts;
 CREATE POLICY inventory_receipts_read_admin ON public.inventory_receipts
-  FOR SELECT TO authenticated USING (private.is_admin_or_owner());
+  FOR SELECT TO authenticated USING ((SELECT private.is_admin_or_owner()));
 DROP POLICY IF EXISTS inventory_receipt_items_read_admin ON public.inventory_receipt_items;
 CREATE POLICY inventory_receipt_items_read_admin ON public.inventory_receipt_items
-  FOR SELECT TO authenticated USING (private.is_admin_or_owner());
+  FOR SELECT TO authenticated USING ((SELECT private.is_admin_or_owner()));
 DROP POLICY IF EXISTS inventory_stock_adjustments_read_admin ON public.inventory_stock_adjustments;
 CREATE POLICY inventory_stock_adjustments_read_admin ON public.inventory_stock_adjustments
-  FOR SELECT TO authenticated USING (private.is_admin_or_owner());
+  FOR SELECT TO authenticated USING ((SELECT private.is_admin_or_owner()));
 
 -- Inventory mutations are performed only by audited SECURITY DEFINER RPCs.
 -- No staff role or client can write counters or movement rows directly.
@@ -94,9 +94,9 @@ DROP POLICY IF EXISTS inventory_movements_insert_staff ON public.inventory_movem
 DROP POLICY IF EXISTS inventory_movements_read_staff ON public.inventory_movements;
 
 CREATE POLICY inventory_read_admin ON public.inventory
-  FOR SELECT TO authenticated USING (private.is_admin_or_owner());
+  FOR SELECT TO authenticated USING ((SELECT private.is_admin_or_owner()));
 CREATE POLICY inventory_movements_read_admin ON public.inventory_movements
-  FOR SELECT TO authenticated USING (private.is_admin_or_owner());
+  FOR SELECT TO authenticated USING ((SELECT private.is_admin_or_owner()));
 
 REVOKE INSERT,UPDATE,DELETE ON TABLE public.inventory FROM authenticated;
 REVOKE INSERT,UPDATE,DELETE ON TABLE public.inventory_movements FROM authenticated;
