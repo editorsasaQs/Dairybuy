@@ -54,7 +54,7 @@ Development's 28 applied versions, in order:
 27. 20261114065440 phase4_4_6_2_immutable_delivery_address_snapshot
 28. 20261114072429 phase4_4_6_3_customer_delivery_confirmation
 
-The current repository contains 38 SQL files. Its first 28 files do not all use the exact version IDs from the development ledger, and several local copies contain edits beyond the stored historical SQL. The production-ready sequence must restore the exact recorded SQL under the exact recorded version IDs, then place any genuine corrections in new, forward-only migrations. Never replay modified SQL under a version already recorded in development.
+The reconciliation branch now restores the exact stored SQL for all 28 applied development migrations under their exact version IDs and canonical filenames. Byte-for-byte comparison against the development migration ledger has been completed for every one of those 28 entries. The baseline file no longer smuggles in the manual RLS event-trigger helper. A separately versioned bootstrap migration, `20261106000834_rls_auto_enable_bootstrap.sql`, now records that pre-existing dependency before `20261106000835_phase4_3_security_hardening.sql`. The branch currently contains 39 SQL files: 28 exact historical migrations, one explicit RLS bootstrap migration, and the 10 later unapplied migrations. Never replay modified SQL under a version already recorded in development.
 
 ## Unapplied repository migrations after the development ledger
 
