@@ -1,0 +1,6 @@
+{
+  "name": "Dairybuy",
+  "description": "Shop fresh milk, curd, misti doi, paneer, ghee and everyday dairy essentials delivered daily with Dairybuy.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

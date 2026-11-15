@@ -1,0 +1,61 @@
+-- Dairybuy: strict Customer + Admin authorization boundary.
+-- Hinglish note: Ab application-level access sirf customer aur admin/owner ko milega.
+-- Legacy manager/operations_staff enum labels data compatibility ke liye rahenge,
+-- lekin un roles ko RLS ke through staff privileges nahi milenge.
+-- This migration intentionally changes authorization; it is not performance-only.
+
+BEGIN;
+
+-- Centralize staff authorization: only admin/owner qualify as privileged staff.
+-- Keep SECURITY DEFINER, STABLE and locked search_path from Phase 4.4.
+CREATE OR REPLACE FUNCTION private.is_staff()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+  SELECT private.is_admin_or_owner();
+$function$;
+
+-- Permission grants no longer elevate legacy/non-admin roles.
+CREATE OR REPLACE FUNCTION private.has_staff_permission(
+  check_permission public.staff_permission_enum
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+  SELECT private.is_admin_or_owner();
+$function$;
+
+-- Keep the user_roles table limited to the supported role model.
+-- Owner/admin may assign only customer/admin/owner; admin cannot promote anyone to owner.
+DROP POLICY IF EXISTS user_roles_manage_admin_owner ON public.user_roles;
+CREATE POLICY user_roles_manage_admin_owner
+ON public.user_roles
+FOR ALL
+TO authenticated
+USING (
+  (SELECT public.is_owner())
+  OR (
+    (SELECT public.is_admin_or_owner())
+    AND role IN ('admin'::public.user_role_enum, 'customer'::public.user_role_enum)
+    AND user_id <> (SELECT auth.uid())
+  )
+)
+WITH CHECK (
+  role IN ('owner'::public.user_role_enum, 'admin'::public.user_role_enum, 'customer'::public.user_role_enum)
+  AND (
+    (SELECT public.is_owner())
+    OR (
+      (SELECT public.is_admin_or_owner())
+      AND role IN ('admin'::public.user_role_enum, 'customer'::public.user_role_enum)
+      AND user_id <> (SELECT auth.uid())
+    )
+  )
+);
+
+COMMIT;

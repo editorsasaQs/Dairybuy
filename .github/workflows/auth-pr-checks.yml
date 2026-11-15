@@ -1,0 +1,289 @@
+name: Auth PR checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+    paths:
+      - "src/**"
+      - "e2e/**"
+      - "playwright.config.ts"
+      - "supabase/migrations/**"
+      - "supabase/tests/**"
+      - "supabase/config.toml"
+      - "docs/**"
+      - "package.json"
+      - "package-lock.json"
+      - "next.config.*"
+      - "tsconfig.json"
+      - ".github/workflows/auth-pr-checks.yml"
+  push:
+    branches: ["feature/supabase-auth-flow"]
+
+# This workflow is verification-only. It must never push commits to a PR branch.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout reviewed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run lint on authentication changes
+        run: >-
+          npx eslint
+          src/app/api/cart/route.ts
+          src/app/api/orders/route.ts
+          src/app/api/orders/route.test.ts
+          src/app/api/orders/[id]/cancel/route.ts
+          src/app/api/orders/[id]/confirm-delivery/route.ts
+          src/components/orders/ConfirmDeliveryButton.tsx
+          src/app/api/orders/[id]/cancel/route.test.ts
+          src/app/account/orders/page.tsx
+          src/components/orders/CancelOrderButton.tsx
+          src/app/checkout/page.tsx
+          src/app/orders/[id]/page.tsx
+          src/components/checkout/CheckoutClient.tsx
+          src/components/bag/BagContext.tsx
+          src/lib/bag.ts
+          src/lib/services/auth-service.ts
+          src/lib/services/order-address-snapshot.ts
+          src/lib/services/order-address-snapshot.test.ts
+          src/lib/services/__tests__/auth-and-security.test.ts
+          src/lib/services/database-cart-service.ts
+          src/lib/services/persisted-cart-service.ts
+          src/lib/services/__tests__/database-schema.test.ts
+          src/lib/services/__tests__/persisted-cart-service.test.ts
+          src/lib/supabase/server.ts
+          src/lib/supabase/verify-session.ts
+          src/lib/supabase/verify-session.test.ts
+          src/lib/supabase/proxy.ts
+          proxy.ts
+          src/app/auth/actions.ts
+          src/app/auth/callback/route.ts
+          src/app/login/page.tsx
+          src/app/signup/page.tsx
+          src/app/account/page.tsx
+          src/app/orders/[id]/page.tsx
+          src/app/admin/orders/page.tsx
+          src/app/admin/orders/[id]/page.tsx
+          src/lib/supabase/types.ts
+          src/components/layout/SiteHeader.tsx
+          playwright.config.ts
+          e2e/auth.spec.ts
+          e2e/checkout-validation.spec.ts
+
+      - name: Run TypeScript checks
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm test -- --reporter=dot
+
+      - name: Build application
+        run: npm run build
+
+  database-rbac:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout reviewed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 3.0.0
+
+      # Starts a fresh local stack and applies only repository migrations.
+      # No project ref, access token, DB password, or remote flag is supplied.
+      - name: Start disposable local Supabase stack
+        run: supabase start
+
+      - name: Run RBAC pgTAP regression test against local database
+        run: supabase test db supabase/tests/database/rbac_customer_admin_boundary.test.sql
+
+      - name: Run Phase 4.4.2 inventory lock-order pgTAP regression
+        run: supabase test db supabase/tests/database/phase4_4_2_inventory_lock_order.test.sql
+
+      - name: Run Phase 4.4.4 cancellation RPC security regression
+        run: supabase test db supabase/tests/database/phase4_4_4_order_cancellation.test.sql
+
+      - name: Run Phase 4.4.5 order status transition regression
+        run: supabase test db supabase/tests/database/phase4_4_5_order_status_transition.test.sql
+
+      - name: Run Phase 4.4.6.2 immutable address snapshot regression
+        run: supabase test db supabase/tests/database/phase4_4_6_2_order_address_snapshot.test.sql
+
+      - name: Run Phase 4.4.6.3 customer/admin delivery completion regression
+        run: supabase test db supabase/tests/database/phase4_4_6_3_customer_delivery_confirmation.test.sql
+
+      - name: Run inventory reservation concurrency regression
+        run: bash supabase/tests/concurrency/inventory-reservation-concurrency.sh
+
+      - name: Run end-to-end authenticated COD order RPC concurrency regression
+        run: bash supabase/tests/concurrency/create-cod-order-rpc-concurrency.sh
+
+      - name: Run concurrent customer order cancellation regression
+        run: bash supabase/tests/concurrency/customer-order-cancellation-concurrency.sh
+
+      - name: Stop disposable local Supabase stack
+        if: always()
+        run: supabase stop --no-backup
+
+  auth-e2e:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout reviewed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 3.0.0
+
+      # No project ref, hosted token, DB password, or remote flag is supplied.
+      - name: Start isolated local Supabase + Mailpit
+        run: supabase start
+
+      - name: Export and validate loopback-only Supabase environment
+        shell: bash
+        run: |
+          set -a
+          source <(supabase status -o env)
+          set +a
+
+          if [[ "${API_URL:-}" != http://127.0.0.1:* && "${API_URL:-}" != http://localhost:* ]]; then
+            echo "::error::Refusing non-loopback Supabase API URL: ${API_URL:-<missing>}"
+            exit 1
+          fi
+
+          ANON_KEY_VALUE="${ANON_KEY:-${PUBLISHABLE_KEY:-}}"
+          if [[ -z "$ANON_KEY_VALUE" ]]; then
+            echo "::error::Supabase local CLI did not return ANON_KEY or PUBLISHABLE_KEY"
+            exit 1
+          fi
+
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY_VALUE"
+            echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000"
+            echo "PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000"
+            echo "MAILPIT_API_URL=http://127.0.0.1:54324"
+          } >> "$GITHUB_ENV"
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Install Chromium and OS dependencies
+        run: npx playwright install --with-deps chromium
+
+      - name: Build app against local Supabase
+        run: npm run build
+
+      - name: Start production app and wait for readiness
+        shell: bash
+        run: |
+          npm run start -- -H 127.0.0.1 > /tmp/dairybuy-next.log 2>&1 &
+          echo $! > /tmp/dairybuy-next.pid
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:3000/login > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/dairybuy-next.log
+          echo "::error::Next.js did not become ready"
+          exit 1
+
+      - name: Run customer authentication and checkout browser tests
+        run: npm run test:e2e
+
+      - name: Install PostgreSQL client for isolated database assertions
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Assert checkout validation created no commerce records
+        shell: bash
+        run: |
+          psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $assertions$
+          BEGIN
+            IF EXISTS (SELECT 1 FROM public.orders) THEN
+              RAISE EXCEPTION 'Checkout validation unexpectedly created an order';
+            END IF;
+            IF EXISTS (SELECT 1 FROM public.order_items) THEN
+              RAISE EXCEPTION 'Checkout validation unexpectedly created order items';
+            END IF;
+            IF EXISTS (SELECT 1 FROM public.payments) THEN
+              RAISE EXCEPTION 'Checkout validation unexpectedly created a payment';
+            END IF;
+            IF EXISTS (SELECT 1 FROM public.refunds) THEN
+              RAISE EXCEPTION 'Checkout validation unexpectedly created a refund';
+            END IF;
+            IF EXISTS (SELECT 1 FROM public.inventory_movements) THEN
+              RAISE EXCEPTION 'Checkout validation unexpectedly created inventory movements';
+            END IF;
+            IF EXISTS (SELECT 1 FROM public.subscriptions) THEN
+              RAISE EXCEPTION 'Checkout validation unexpectedly created a subscription';
+            END IF;
+            IF EXISTS (SELECT 1 FROM public.subscription_deliveries) THEN
+              RAISE EXCEPTION 'Checkout validation unexpectedly created subscription deliveries';
+            END IF;
+            IF EXISTS (SELECT 1 FROM public.cod_collections) THEN
+              RAISE EXCEPTION 'Checkout validation unexpectedly created a COD collection';
+            END IF;
+          END
+          $assertions$;
+          SQL
+
+      - name: Upload Playwright diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dairybuy-auth-e2e-diagnostics
+          path: |
+            playwright-report/
+            test-results/
+            /tmp/dairybuy-next.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Stop Next.js app
+        if: always()
+        run: |
+          if [ -f /tmp/dairybuy-next.pid ]; then
+            kill "$(cat /tmp/dairybuy-next.pid)" 2>/dev/null || true
+          fi
+
+      - name: Stop disposable local Supabase stack
+        if: always()
+        run: supabase stop --no-backup

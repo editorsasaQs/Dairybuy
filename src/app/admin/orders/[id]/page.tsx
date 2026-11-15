@@ -1,0 +1,102 @@
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { Container } from "@/components/brand/Container";
+import { isAdminOrOwner } from "@/lib/services/auth-service";
+import { isValidOrderId } from "@/lib/services/admin-order-filters";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { OrderStatusActions } from "./OrderStatusActions";
+import { parseOrderDeliveryAddressSnapshot } from "@/lib/services/order-address-snapshot";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+function formatInr(paise: number) {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(paise / 100);
+}
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" }).format(new Date(value));
+}
+function formatTimestamp(value: string) {
+  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(value));
+}
+
+export default async function AdminOrderDetailPage({ params }: PageProps<"/admin/orders/[id]">) {
+  const { id } = await params;
+  if (!isValidOrderId(id)) notFound();
+
+  const supabase = await createSupabaseServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) redirect(`/login?next=${encodeURIComponent(`/admin/orders/${id}`)}`);
+  const { data: roles, error: roleError } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+  if (roleError || !(roles ?? []).some((entry) => isAdminOrOwner(entry.role))) redirect("/account");
+
+  const { data: order, error } = await supabase.from("orders")
+    .select("id,order_number,customer_id,service_area_id,delivery_slot_id,order_type,status,payment_status,payment_method,subtotal_paise,delivery_fee_paise,total_paise,delivery_date,delivery_address_snapshot,delivery_address_snapshot_source,delivery_address_snapshot_at,delivery_notes,created_at,updated_at")
+    .eq("id", id)
+    .eq("order_type", "one_time")
+    .maybeSingle();
+  if (error || !order) notFound();
+
+  const [itemsResult, slotResult, areaResult, historyResult] = await Promise.all([
+    supabase.from("order_items").select("id,product_name_snapshot,variant_name_snapshot,brand_snapshot,pack_size_snapshot,vendor_name_snapshot,quantity,quantity_litres,unit_price_paise,total_price_paise").eq("order_id", order.id).order("id"),
+    supabase.from("delivery_slots").select("label,start_time,end_time").eq("id", order.delivery_slot_id).maybeSingle(),
+    supabase.from("service_areas").select("name,city,state").eq("id", order.service_area_id).maybeSingle(),
+    supabase.from("order_status_history").select("from_status,to_status,changed_by,note,created_at").eq("order_id", order.id).order("created_at", { ascending: true }),
+  ]);
+  if (itemsResult.error || slotResult.error || areaResult.error || historyResult.error) {
+    throw new Error("Unable to load order details.");
+  }
+
+  const address = parseOrderDeliveryAddressSnapshot(order.delivery_address_snapshot);
+  const slot = slotResult.data;
+  const area = areaResult.data;
+
+  return (
+    <main className="db-page py-(--section-y)">
+      <Container className="max-w-4xl">
+        <Link href="/admin/orders" className="text-sm font-semibold text-highlight-ink underline">← Back to order queue</Link>
+        <div className="mt-5 flex flex-wrap items-start justify-between gap-4">
+          <div><p className="text-sm font-semibold text-highlight-ink">Dairybuy operations</p><h1 className="mt-2 text-3xl font-bold">{order.order_number}</h1><p className="mt-2 text-sm text-muted-foreground">Placed {formatTimestamp(order.created_at)} · Updated {formatTimestamp(order.updated_at)}</p></div>
+          <span className="rounded-full bg-[#e7f6fc] px-4 py-2 text-sm font-bold capitalize">{order.status.replaceAll("_", " ")}</span>
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <section className="rounded-3xl border-2 border-white bg-white p-5 shadow-sm">
+            <h2 className="font-bold">Customer and delivery address</h2>
+            {address ? <><p className="mt-3 font-semibold">{address.recipient_name} · {address.phone}</p><p className="mt-1 text-sm">{address.address_line1}{address.address_line2 ? `, ${address.address_line2}` : ""}{address.landmark ? `, ${address.landmark}` : ""}</p><p className="text-sm text-muted-foreground">{address.city}, {address.state} – {address.pincode}</p></> : <p className="mt-3 text-sm text-muted-foreground">Order address snapshot is unavailable.</p>}
+            <p className="mt-3 break-all text-xs text-muted-foreground">Customer ID: {order.customer_id}</p>
+            <p className="mt-3 rounded-xl bg-[#fff8e7] p-3 text-xs text-muted-foreground">{order.delivery_address_snapshot_source === "legacy_reconstructed"
+              ? "Reconstructed from the currently linked saved address during migration; this is not a verified checkout-time address."
+              : "Captured and preserved atomically when the order was placed."}</p>
+            {order.delivery_notes ? <p className="mt-3 text-sm">Delivery note: {order.delivery_notes}</p> : null}
+          </section>
+          <section className="rounded-3xl border-2 border-white bg-white p-5 shadow-sm">
+            <h2 className="font-bold">Delivery and payment</h2>
+            <dl className="mt-3 space-y-3 text-sm">
+              <div><dt className="text-muted-foreground">Delivery date</dt><dd className="font-semibold">{order.delivery_date ? formatDate(order.delivery_date) : "Not set"}</dd></div>
+              <div><dt className="text-muted-foreground">Slot</dt><dd className="font-semibold">{slot ? `${slot.label} · ${slot.start_time.slice(0, 5)}–${slot.end_time.slice(0, 5)}` : "Unavailable"}</dd></div>
+              <div><dt className="text-muted-foreground">Service area</dt><dd className="font-semibold">{area ? `${area.name}, ${area.city}` : "Unavailable"}</dd></div>
+              <div><dt className="text-muted-foreground">Payment</dt><dd className="font-semibold">Cash on delivery · {order.payment_status}</dd></div>
+            </dl>
+            <p className="mt-4 rounded-xl bg-[#e7f6fc] p-3 text-xs text-muted-foreground">Delivery completion does not mark cash as collected. COD collection is verified separately.</p>
+          </section>
+        </div>
+
+        <section className="mt-4 rounded-3xl border-2 border-white bg-white p-5 shadow-sm">
+          <h2 className="font-bold">Order items</h2>
+          <ul className="mt-3 divide-y divide-border">
+            {(itemsResult.data ?? []).map((item) => <li key={item.id} className="flex flex-wrap justify-between gap-3 py-3 text-sm"><div><p className="font-semibold">{item.product_name_snapshot ?? "Dairybuy product"}</p><p className="text-xs text-muted-foreground">{[item.variant_name_snapshot,item.brand_snapshot,item.pack_size_snapshot,item.vendor_name_snapshot].filter(Boolean).join(" · ")} · Qty {item.quantity}{item.quantity_litres ? ` · ${item.quantity_litres} L` : ""}</p><p className="mt-1 text-xs text-muted-foreground">{formatInr(item.unit_price_paise)} each</p></div><p className="font-bold tabular-nums">{formatInr(item.total_price_paise)}</p></li>)}
+          </ul>
+          <dl className="mt-3 space-y-2 border-t border-border pt-4 text-sm"><div className="flex justify-between"><dt>Subtotal</dt><dd>{formatInr(order.subtotal_paise)}</dd></div><div className="flex justify-between"><dt>Delivery fee</dt><dd>{formatInr(order.delivery_fee_paise)}</dd></div><div className="flex justify-between text-base font-bold"><dt>Total</dt><dd>{formatInr(order.total_paise)}</dd></div></dl>
+        </section>
+
+        <OrderStatusActions orderId={order.id} currentStatus={order.status} />
+
+        <section className="mt-4 rounded-3xl border-2 border-white bg-white p-5 shadow-sm">
+          <h2 className="font-bold">Status history</h2>
+          {(historyResult.data ?? []).length ? <ol className="mt-4 space-y-4">{historyResult.data!.map((event,index) => <li key={`${event.created_at}-${index}`} className="border-l-2 border-[#b9ddea] pl-4"><p className="font-semibold capitalize">{event.from_status ? `${event.from_status.replaceAll("_"," ")} → ` : ""}{event.to_status.replaceAll("_"," ")}</p><p className="mt-1 text-xs text-muted-foreground">{formatTimestamp(event.created_at)} · Actor {event.changed_by ?? "system"}</p>{event.note ? <p className="mt-1 text-sm text-muted-foreground">{event.note}</p> : null}</li>)}</ol> : <p className="mt-3 text-sm text-muted-foreground">No status changes have been recorded yet.</p>}
+        </section>
+      </Container>
+    </main>
+  );
+}

@@ -1,0 +1,17 @@
+category,product_brand,pack_size,purchase_price_inr,sheet_delivery_component_inr,final_selling_price_inr,final_price_in_sheet_inr
+Ghee,Red Cow,200 ml,170,9,179,179
+Ghee,Red Cow,500 ml,390,9,399,399
+Ghee,Ashirvaad,200 ml,182,9,191,191
+Ghee,Ashirvaad,500 ml,437,9,446,446
+Butter,Amul,100 g,66,9,75,75
+Butter,Amul,200 g,130,9,139,139
+Butter,Amul,500 g,305,9,314,314
+Butter,Delicious,100 g,22,11,33,33
+Butter,Delicious,500 g,117,9,126,126
+Cheese,Amul cheese slices (first list),100 g,82,11,93,93
+Cheese,Amul cheese slices (first list),200 g,145,9,154,154
+Cheese,Amul cheese blocs (second list),200 g,130,11,141,141
+Cheese,Amul cheese blocs (second list),500 g,300,9,309,309
+Doi,Misti Doi,100 g,35,9,44,44
+Doi,Tok Doi,100 g,25,9,34,34
+Sweets,Firni,1 piece,35,9,44,44

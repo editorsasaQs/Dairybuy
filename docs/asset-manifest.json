@@ -1,0 +1,173 @@
+{
+  "count": 14,
+  "images": [
+    {
+      "file": "banana.jpg",
+      "source": "src/assets/banana.jpg",
+      "path": "/images/products/banana.jpg",
+      "width": 816,
+      "height": 816,
+      "bytes": 56443,
+      "sha256": "258827ccb54ed63cf803e087e387ac57dcb315f134f40087f4ca728916af2aad",
+      "identicalToSource": true,
+      "purpose": "Square product shot; used as product tile in original OrderNow.tsx and index.tsx (confirmed by visual check + source usage)",
+      "purposeConfirmed": true
+    },
+    {
+      "file": "bread.jpg",
+      "source": "src/assets/bread.jpg",
+      "path": "/images/products/bread.jpg",
+      "width": 816,
+      "height": 816,
+      "bytes": 70582,
+      "sha256": "0f93582aa7cba57dfa41d7a2849d23d70ef77341f6be83e3e14ffe4c686e0e03",
+      "identicalToSource": true,
+      "purpose": "Square product shot; used as product tile in original OrderNow.tsx and index.tsx (confirmed by visual check + source usage)",
+      "purposeConfirmed": true
+    },
+    {
+      "file": "butter.jpg",
+      "source": "src/assets/butter.jpg",
+      "path": "/images/products/butter.jpg",
+      "width": 816,
+      "height": 816,
+      "bytes": 57722,
+      "sha256": "5a8d79e37737a29bd46fae7594657aa3c2336968271de91e3cb79a37bd21d585",
+      "identicalToSource": true,
+      "purpose": "Square product shot; used as product tile in original OrderNow.tsx and index.tsx (confirmed by visual check + source usage)",
+      "purposeConfirmed": true
+    },
+    {
+      "file": "combo.jpg",
+      "source": "src/assets/combo.jpg",
+      "path": "/images/banners/combo.jpg",
+      "width": 1024,
+      "height": 768,
+      "bytes": 102720,
+      "sha256": "b55ac3425403b3727315983f2d311b7cdb397591ef5fbae39144964f3908c61d",
+      "identicalToSource": true,
+      "purpose": "Breakfast combo promo image; used in original routes/index.tsx combo section",
+      "purposeConfirmed": true
+    },
+    {
+      "file": "curd.jpg",
+      "source": "src/assets/curd.jpg",
+      "path": "/images/products/curd.jpg",
+      "width": 816,
+      "height": 816,
+      "bytes": 60570,
+      "sha256": "40612fc0069411bec611e4449c6dc838a7ffdc4ba3ed6b85ac8e59e2f3eab504",
+      "identicalToSource": true,
+      "purpose": "Square product shot; used as product tile in original OrderNow.tsx and index.tsx (confirmed by visual check + source usage)",
+      "purposeConfirmed": true
+    },
+    {
+      "file": "egg.jpg",
+      "source": "src/assets/egg.jpg",
+      "path": "/images/products/egg.jpg",
+      "width": 816,
+      "height": 816,
+      "bytes": 68933,
+      "sha256": "33dac3476c4e68f9b4b2bbd9bfc3b3e922ef82e1eb79693b3430c7486e5b92af",
+      "identicalToSource": true,
+      "purpose": "Square product shot; used as product tile in original OrderNow.tsx and index.tsx (confirmed by visual check + source usage)",
+      "purposeConfirmed": true
+    },
+    {
+      "file": "firni.jpg",
+      "source": "src/assets/firni.jpg",
+      "path": "/images/products/firni.jpg",
+      "width": 816,
+      "height": 816,
+      "bytes": 75725,
+      "sha256": "63adfed45fff8a5b0df2fd991bd013d555cf77834df09a7b28718564a1477123",
+      "identicalToSource": true,
+      "purpose": "Square product shot; used as product tile in original OrderNow.tsx and index.tsx (confirmed by visual check + source usage)",
+      "purposeConfirmed": true
+    },
+    {
+      "file": "ghee.jpg",
+      "source": "src/assets/ghee.jpg",
+      "path": "/images/products/ghee.jpg",
+      "width": 816,
+      "height": 816,
+      "bytes": 65798,
+      "sha256": "4ac8226cf03f407f0eb75ace447c13fcedf1c80cc51b995d240c5bfae09ff5f2",
+      "identicalToSource": true,
+      "purpose": "Square product shot; used as product tile in original OrderNow.tsx and index.tsx (confirmed by visual check + source usage)",
+      "purposeConfirmed": true
+    },
+    {
+      "file": "hello.jpg",
+      "source": "src/assets/hello.jpg",
+      "path": "/images/original/hello.jpg",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 107500,
+      "sha256": "907d1aedbf3288147818d9237100e1e7ed0e7a283e7cd67f9b5b476563de72a9",
+      "identicalToSource": true,
+      "purpose": "Person-with-milk-crate image used on original About page; final purpose in new site UNCONFIRMED, kept under original/",
+      "purposeConfirmed": false
+    },
+    {
+      "file": "hero.jpg",
+      "source": "src/assets/hero.jpg",
+      "path": "/images/banners/hero.jpg",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 206853,
+      "sha256": "7722e59f78b7be27a48b70d6b93f6020784b391fe67165e8a5ff5043a4b5a552",
+      "identicalToSource": true,
+      "purpose": "Wide hero image (milkman delivering at sunrise); used as hero in original routes/index.tsx",
+      "purposeConfirmed": true
+    },
+    {
+      "file": "jam.jpg",
+      "source": "src/assets/jam.jpg",
+      "path": "/images/products/jam.jpg",
+      "width": 816,
+      "height": 816,
+      "bytes": 84829,
+      "sha256": "4326c7f022790261deb0c4904f3af8240191961d63e02b563e5e64b2f442c81d",
+      "identicalToSource": true,
+      "purpose": "Square product shot; used as product tile in original OrderNow.tsx and index.tsx (confirmed by visual check + source usage)",
+      "purposeConfirmed": true
+    },
+    {
+      "file": "juice.jpg",
+      "source": "src/assets/juice.jpg",
+      "path": "/images/products/juice.jpg",
+      "width": 816,
+      "height": 816,
+      "bytes": 63369,
+      "sha256": "4e2faa48d6d4df4ea5bc9440154951ee2598afe436642691e4a101d52f029770",
+      "identicalToSource": true,
+      "purpose": "Square product shot; used as product tile in original OrderNow.tsx and index.tsx (confirmed by visual check + source usage)",
+      "purposeConfirmed": true
+    },
+    {
+      "file": "milk.jpg",
+      "source": "src/assets/milk.jpg",
+      "path": "/images/products/milk.jpg",
+      "width": 816,
+      "height": 816,
+      "bytes": 40942,
+      "sha256": "519b5da85ed99e94d43172fe7f8a29aac972a7243f005904d5f4d662e38e4e2e",
+      "identicalToSource": true,
+      "purpose": "Square product shot; used as product tile in original OrderNow.tsx and index.tsx (confirmed by visual check + source usage)",
+      "purposeConfirmed": true
+    },
+    {
+      "file": "mistidoi.jpg",
+      "source": "src/assets/mistidoi.jpg",
+      "path": "/images/products/mistidoi.jpg",
+      "width": 816,
+      "height": 816,
+      "bytes": 69991,
+      "sha256": "af441d146fedf282cf50b3f3a5e1e2730d292bf632b5bc31fe68e37b7bb88f15",
+      "identicalToSource": true,
+      "purpose": "Square product shot; used as product tile in original OrderNow.tsx and index.tsx (confirmed by visual check + source usage)",
+      "purposeConfirmed": true
+    }
+  ]
+}
