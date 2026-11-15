@@ -86,6 +86,9 @@ BEGIN
 END;
 $patch$;
 
+COMMENT ON FUNCTION public.create_subscription_payment_intent(uuid,uuid,date,public.subscription_plan_enum,jsonb,uuid) IS
+  'Activates an authenticated, idempotent COD subscription. The subscription COD marker is not a captured payment; each delivery is a separate pending COD order/payment settled after cash verification.';
+
 -- Address snapshot validation remains tied to the original customer-owned address,
 -- but COD activation does not fabricate an online payment verification timestamp.
 DO $patch$
