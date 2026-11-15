@@ -214,7 +214,7 @@ BEGIN
 
   FOREACH v_collection_id IN ARRAY p_collection_ids LOOP
     SELECT c.* INTO v_collection FROM public.cod_collections c
-      WHERE c.id=v_collection_id FOR UPDATE;
+      WHERE c.id=v_collection_id;
     IF NOT FOUND OR v_collection.collected_by_staff_id<>v_actor THEN
       RAISE EXCEPTION 'Every collection must belong to the authenticated delivery staff' USING ERRCODE='42501';
     END IF;
@@ -222,6 +222,11 @@ BEGIN
     IF NOT FOUND OR v_first.order_type<>'one_time' OR v_first.payment_method<>'cod'
        OR v_first.status<>'delivered' THEN
       RAISE EXCEPTION 'Only delivered one-time COD collections can be handed over' USING ERRCODE='23514';
+    END IF;
+    SELECT c.* INTO v_collection FROM public.cod_collections c
+      WHERE c.id=v_collection_id FOR UPDATE;
+    IF v_collection.collected_by_staff_id<>v_actor THEN
+      RAISE EXCEPTION 'Collection ownership changed during handover submission' USING ERRCODE='42501';
     END IF;
     IF NOT EXISTS (
       SELECT 1 FROM public.delivery_assignment_orders dao
