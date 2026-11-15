@@ -1695,6 +1695,20 @@ export type Database = {
           was_already_applied: boolean
         }[]
       }
+      audit_inventory_reservations: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          audit_type: string
+          inventory_id: string
+          order_id: string | null
+          product_variant_id: string
+          service_area_id: string | null
+          recorded_reserved_stock: number
+          ledger_reserved_stock: number
+          order_status: string | null
+          detail: string
+        }[]
+      }
       set_customer_default_address: { Args: { p_address_id: string }; Returns: undefined }
     }
     Enums: {
