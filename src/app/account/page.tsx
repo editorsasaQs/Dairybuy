@@ -16,7 +16,8 @@ export default async function AccountPage() {
   const profile = profileData as { full_name: string | null; email: string | null; phone: string | null } | null;
   const { data: rolesData } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
   const roles = rolesData as Array<{ role: string }> | null;
-  const canManageOrders = (roles ?? []).some((entry) => isAdminOrOwner(entry.role as UserRole));\n  const canManageDeliveries = (roles ?? []).some((entry) => ["owner", "admin", "manager", "operations_staff"].includes(entry.role));
+  const canManageOrders = (roles ?? []).some((entry) => isAdminOrOwner(entry.role as UserRole));
+  const canManageDeliveries = (roles ?? []).some((entry) => ["owner", "admin", "manager", "operations_staff"].includes(entry.role));
   return <main className="db-page py-(--section-y)"><Container className="max-w-3xl"><section className="db-panel rounded-[2.5rem] border-2 border-white bg-[#dff5fc] p-6 shadow-pop sm:p-9">
     <p className="text-sm font-semibold text-highlight-ink">Your Dairybuy account</p><h1 className="mt-2 text-3xl">Hello, {profile?.full_name || user.email || 'there'}!</h1>
     <dl className="mt-7 grid gap-4 sm:grid-cols-2">
