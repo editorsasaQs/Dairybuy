@@ -108,6 +108,21 @@ BEGIN
 END;
 $patch$;
 
+-- Clarify that stock movements belong to COD fulfilment, not prepaid fulfilment.
+DO $patch$
+DECLARE v_def text; v_next text;
+BEGIN
+  v_def:=pg_catalog.pg_get_functiondef('private.generate_subscription_deliveries(date)'::regprocedure);
+  v_next:=pg_catalog.replace(v_def,'Prepaid subscription delivery stock reservation','Subscription COD delivery stock reservation');
+  IF v_next=v_def THEN RAISE EXCEPTION 'Subscription reservation note patch did not match'; END IF;
+  EXECUTE v_next;
+  v_def:=pg_catalog.pg_get_functiondef('private.complete_subscription_delivery(uuid)'::regprocedure);
+  v_next:=pg_catalog.replace(v_def,'Prepaid subscription delivery fulfilled','Subscription COD delivery fulfilled');
+  IF v_next=v_def THEN RAISE EXCEPTION 'Subscription fulfilment note patch did not match'; END IF;
+  EXECUTE v_next;
+END;
+$patch$;
+
 -- Shared cash recording: one-time assignment remains unchanged; subscription
 -- authorization is sourced only from the delivery's assigned_staff_id.
 DO $patch$
