@@ -191,8 +191,9 @@ psql "$DB_URL" -v ON_ERROR_STOP=1 <<SQL
 DO \$assertions\$
 DECLARE
   delivered_status text;
-  delivered_reserved integer;
   delivered_available integer;
+  delivered_order_reservation_balance integer;
+  delivered_reservation_count integer;
   fulfilled_count integer;
   delivered_history_count integer;
   delivered_payment_status text;
@@ -204,18 +205,24 @@ DECLARE
   out_for_delivery_history_count integer;
 BEGIN
   SELECT status::text INTO delivered_status FROM public.orders WHERE id='$ORDER_DELIVERY'::uuid;
-  SELECT reserved_stock,available_stock INTO delivered_reserved,delivered_available
+  SELECT available_stock INTO delivered_available
    FROM public.inventory WHERE product_variant_id='$VARIANT' AND service_area_id='$AREA'::uuid;
+  SELECT COALESCE(sum(change_amount),0)::integer INTO delivered_order_reservation_balance
+   FROM public.inventory_movements
+   WHERE reference_id='$ORDER_DELIVERY' AND movement_type IN ('order_reservation','order_reservation_release','order_fulfilled');
+  SELECT count(*) INTO delivered_reservation_count FROM public.inventory_movements
+   WHERE reference_id='$ORDER_DELIVERY' AND movement_type='order_reservation' AND change_amount=1;
   SELECT count(*) INTO fulfilled_count FROM public.inventory_movements
    WHERE reference_id='$ORDER_DELIVERY' AND movement_type='order_fulfilled' AND change_amount=-1;
   SELECT count(*) INTO delivered_history_count FROM public.order_status_history
    WHERE order_id='$ORDER_DELIVERY'::uuid AND to_status='delivered';
   SELECT payment_status::text INTO delivered_payment_status FROM public.orders WHERE id='$ORDER_DELIVERY'::uuid;
 
-  IF delivered_status<>'delivered' OR delivered_reserved<>1 OR delivered_available<>1
+  IF delivered_status<>'delivered' OR delivered_available<>1
+     OR delivered_order_reservation_balance<>0 OR delivered_reservation_count<>1
      OR fulfilled_count<>1 OR delivered_history_count<>1 OR delivered_payment_status<>'pending' THEN
-    RAISE EXCEPTION 'Customer/admin delivery race failed: status %, reserved %, available %, fulfilled movements %, delivered history %, COD payment %',
-      delivered_status,delivered_reserved,delivered_available,fulfilled_count,delivered_history_count,delivered_payment_status;
+    RAISE EXCEPTION 'Customer/admin delivery race failed: status %, available %, order reservation balance %, reservation movements %, fulfilled movements %, delivered history %, COD payment %',
+      delivered_status,delivered_available,delivered_order_reservation_balance,delivered_reservation_count,fulfilled_count,delivered_history_count,delivered_payment_status;
   END IF;
 
   SELECT status::text INTO race_status FROM public.orders WHERE id='$ORDER_CANCEL_RACE'::uuid;
