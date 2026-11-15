@@ -43,7 +43,7 @@ export default async function DeliveryCashHandoverPage() {
                 <p className="font-bold tabular-nums">{money(row.amount_collected_paise)}</p>
               </li>)}</ul>
               <label className="mt-4 grid gap-1 text-xs font-semibold">Cash physically handed over (₹)
-                <input type="number" name="receivedAmountRupees" min="0.01" step="0.01" required className="min-h-11 rounded-xl border border-border px-3 text-sm" placeholder="Enter amount counted by office"/>
+                <input type="number" name="receivedAmountRupees" min="0" step="0.01" required className="min-h-11 rounded-xl border border-border px-3 text-sm" placeholder="Enter amount counted by office"/>
               </label>
               <p className="mt-2 text-xs text-muted-foreground">The system computes expected cash from selected collection records. Owner/admin must accept the batch; any difference is flagged for review.</p>
               <button type="submit" className="mt-4 min-h-11 rounded-full bg-[#573b75] px-5 text-sm font-bold text-white">Submit cash handover</button>
