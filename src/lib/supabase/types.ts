@@ -2586,7 +2586,7 @@ export type Database = {
         }[]
       }
       review_cod_cash_collection: {
-        Args: { p_decision: string; p_note?: string; p_order_id: string }
+        Args: { p_decision: string; p_note?: string | null; p_order_id: string }
         Returns: {
           collection_id: string
           collection_status: string
@@ -2596,7 +2596,7 @@ export type Database = {
         }[]
       }
       review_delivery_cash_handover: {
-        Args: { p_decision: string; p_handover_id: string; p_note?: string }
+        Args: { p_decision: string; p_handover_id: string; p_note?: string | null }
         Returns: {
           handover_id: string
           handover_status: string
