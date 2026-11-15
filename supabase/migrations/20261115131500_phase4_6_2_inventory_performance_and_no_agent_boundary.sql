@@ -78,12 +78,15 @@ BEGIN
     'private.record_cod_cash_collection(uuid,integer,text,text)'::regprocedure
   );
   v_assignment_block:=E'  SELECT EXISTS (\n    SELECT 1 FROM public.delivery_assignment_orders dao\n    JOIN public.delivery_assignments da ON da.id=dao.delivery_assignment_id\n    WHERE dao.order_id=p_order_id AND da.staff_id=v_actor\n      AND da.status IN (''assigned'',''in_progress'',''completed'')\n  ) OR EXISTS (\n    SELECT 1 FROM public.subscription_deliveries sd\n    WHERE sd.order_id=p_order_id AND sd.assigned_staff_id=v_actor\n      AND sd.status=''delivered''\n  ) INTO v_assignment_authorized;\n\n  IF NOT private.is_admin_or_owner() AND NOT v_assignment_authorized THEN\n    RAISE EXCEPTION ''Only the assigned delivery staff or owner/admin can record this collection''\n      USING ERRCODE=''42501'';\n  END IF;';
-  v_next:=pg_catalog.replace(v_def,v_assignment_block,
-    E'  IF NOT private.is_admin_or_owner() THEN\n    RAISE EXCEPTION ''Only owner/admin can record COD cash'' USING ERRCODE=''42501'';\n  END IF;');
+  v_next:=pg_catalog.replace(v_def,
+    E'  IF v_actor IS NULL THEN\n    RAISE EXCEPTION ''Authentication required'' USING ERRCODE=''42501'';\n  END IF;',
+    E'  IF v_actor IS NULL OR NOT private.is_admin_or_owner() THEN\n    RAISE EXCEPTION ''Only owner/admin can record COD cash'' USING ERRCODE=''42501'';\n  END IF;');
+  v_next:=pg_catalog.replace(v_next,v_assignment_block,'');
   v_next:=pg_catalog.replace(v_next,'  v_assignment_authorized boolean := false;\n','');
   IF v_next=v_def
      OR pg_catalog.strpos(v_next,'v_assignment_authorized')>0
-     OR pg_catalog.strpos(v_next,'Only owner/admin can record COD cash')=0 THEN
+     OR pg_catalog.strpos(v_next,'Only the assigned delivery staff')>0
+     OR pg_catalog.strpos(v_next,'IF v_actor IS NULL OR NOT private.is_admin_or_owner()')=0 THEN
     RAISE EXCEPTION 'COD collection owner/admin authorization patch did not match expected function source';
   END IF;
   EXECUTE v_next;
