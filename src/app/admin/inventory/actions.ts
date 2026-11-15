@@ -24,7 +24,7 @@ function textField(formData: FormData, name: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export async function receiveInventoryAction(formData: FormData) {
+export type InventoryActionState = { success: boolean; message: string };\n\nconst failure = (message: string): InventoryActionState => ({ success: false, message });\n\nexport async function receiveInventoryAction(_previous: InventoryActionState, formData: FormData): Promise<InventoryActionState> {
   const vendorId = textField(formData, "vendorId");
   const areaId = textField(formData, "areaId");
   const vendorReference = textField(formData, "vendorReference");
@@ -37,7 +37,7 @@ export async function receiveInventoryAction(formData: FormData) {
   if (!vendorId || !UUID.test(areaId) || !UUID.test(idempotencyKey) || variantIds.length < 1 || variantIds.length > 100
     || quantities.length !== variantIds.length || costs.length !== variantIds.length
     || vendorReference.length > 120 || notes.length > 500) {
-    throw new Error("Complete the vendor, service area and valid receipt details.");
+    return failure("Complete the vendor, service area and valid receipt details.");
   }
 
   const items: Json[] = [];
@@ -49,7 +49,7 @@ export async function receiveInventoryAction(formData: FormData) {
     const unitCostPaise = Math.round(rupees * 100);
     if (!variantId || seen.has(variantId) || !Number.isSafeInteger(quantity) || quantity <= 0
       || !Number.isFinite(rupees) || rupees < 0 || !Number.isSafeInteger(unitCostPaise)) {
-      throw new Error("Each receipt line needs a unique SKU, positive whole quantity and valid non-negative unit cost.");
+      return failure("Each receipt line needs a unique SKU, positive whole quantity and valid non-negative unit cost.");
     }
     seen.add(variantId);
     items.push({ product_variant_id: variantId, quantity, unit_cost_paise: unitCostPaise });
@@ -85,7 +85,7 @@ export async function adjustInventoryAction(formData: FormData) {
     || !Number.isSafeInteger(quantity) || quantity === 0
     || (adjustmentType !== "stocktake_adjustment" && quantity < 0)
     || reason.length < 5 || reason.length > 500 || evidence.length > 200) {
-    throw new Error("Enter a valid adjustment type, quantity and reason. Spoilage/damage quantities must be positive.");
+    return failure("Enter a valid adjustment type, quantity and reason. Spoilage/damage quantities must be positive.");
   }
 
   const supabase = await authorizedClient();
