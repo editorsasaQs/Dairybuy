@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterInventoryAuditByArea, filterInventoryAuditFindings, resolveInventoryAuditLabels } from "./inventory-audit-labels";
+import { filterInventoryAuditByArea, filterInventoryAuditByProduct, filterInventoryAuditFindings, resolveInventoryAuditLabels } from "./inventory-audit-labels";
 
 const finding = {
   product_variant_id: "cow-milk-500",
@@ -17,6 +17,8 @@ describe("resolveInventoryAuditLabels", () => {
       ...finding,
       productLabel: "Cow Milk · Standard · 500 ml · Dairybuy",
       productId: "cow-milk-500",
+      catalogProductId: "cow-milk",
+      catalogProductLabel: "Cow Milk",
       areaLabel: "Topsia · Kolkata",
       areaId: "area-topsia",
     }]);
@@ -26,6 +28,8 @@ describe("resolveInventoryAuditLabels", () => {
     const [resolved] = resolveInventoryAuditLabels([finding], [], [], []);
     expect(resolved?.productLabel).toBe("cow-milk-500");
     expect(resolved?.productId).toBe("cow-milk-500");
+    expect(resolved?.catalogProductId).toBeNull();
+    expect(resolved?.catalogProductLabel).toBe("Product details unavailable");
     expect(resolved?.areaLabel).toBeNull();
     expect(resolved?.areaId).toBe("area-topsia");
   });
@@ -83,5 +87,26 @@ describe("filterInventoryAuditByArea", () => {
   it("returns all findings for no or unknown area filters", () => {
     expect(filterInventoryAuditByArea(findings, null)).toEqual(findings);
     expect(filterInventoryAuditByArea(findings, "unknown-area")).toEqual(findings);
+  });
+});
+
+describe("filterInventoryAuditByProduct", () => {
+  const findings = [
+    { catalogProductId: "cow-milk", inventory_id: "inventory-1" },
+    { catalogProductId: "buffalo-milk", inventory_id: "inventory-2" },
+    { catalogProductId: null, inventory_id: "inventory-3" },
+  ];
+
+  it("filters findings to one catalogue product across its variants", () => {
+    expect(filterInventoryAuditByProduct(findings, "cow-milk")).toEqual([findings[0]]);
+  });
+
+  it("can show findings whose product could not be resolved", () => {
+    expect(filterInventoryAuditByProduct(findings, "unresolved")).toEqual([findings[2]]);
+  });
+
+  it("returns all findings for no or unknown product filters", () => {
+    expect(filterInventoryAuditByProduct(findings, null)).toEqual(findings);
+    expect(filterInventoryAuditByProduct(findings, "unknown-product")).toEqual(findings);
   });
 });
