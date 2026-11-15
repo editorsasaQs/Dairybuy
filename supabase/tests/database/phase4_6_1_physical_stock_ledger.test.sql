@@ -46,8 +46,10 @@ SELECT extensions.ok(
   AND NOT has_table_privilege('authenticated','public.inventory_movements','UPDATE')
   AND NOT has_table_privilege('authenticated','public.inventory_movements','DELETE')
   AND NOT has_table_privilege('authenticated','public.inventory_receipts','INSERT')
-  AND NOT has_table_privilege('authenticated','public.inventory_stock_adjustments','INSERT'),
-  'authenticated users cannot mutate stock counters, movements or receipt audit tables directly'
+  AND NOT has_table_privilege('authenticated','public.inventory_stock_adjustments','INSERT')
+  AND NOT has_table_privilege('anon','public.inventory','INSERT')
+  AND NOT has_table_privilege('anon','public.inventory_movements','INSERT'),
+  'anonymous and authenticated users cannot mutate stock counters, movements or receipt audit tables directly'
 );
 
 INSERT INTO auth.users
