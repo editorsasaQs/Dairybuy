@@ -98,3 +98,36 @@ export function filterInventoryAuditByProduct<T extends { catalogProductId: stri
     ? findings.filter((finding) => finding.catalogProductId === selectedProduct)
     : findings;
 }
+
+export type InventoryAuditSeverity = "critical" | "high";
+
+export type InventoryAuditSeverityFinding = {
+  audit_type: string;
+  ledger_reserved_stock: number;
+  order_status: string | null;
+};
+
+export function getInventoryAuditSeverity(finding: InventoryAuditSeverityFinding): InventoryAuditSeverity {
+  const status = finding.order_status;
+  const terminalOrder = status === "cancelled" || status === "delivered";
+  const activeOrder = status === "pending_confirmation" || status === "confirmed"
+    || status === "processing" || status === "out_for_delivery";
+
+  if (finding.ledger_reserved_stock < 0) return "critical";
+  if (finding.audit_type === "order_ledger" && activeOrder && finding.ledger_reserved_stock <= 0) return "critical";
+  if (finding.audit_type === "order_ledger" && terminalOrder && finding.ledger_reserved_stock !== 0) return "critical";
+
+  return "high";
+}
+
+export function summarizeInventoryAuditSeverity<T extends InventoryAuditSeverityFinding>(findings: T[]) {
+  return findings.reduce(
+    (summary, finding) => {
+      summary.total += 1;
+      if (getInventoryAuditSeverity(finding) === "critical") summary.critical += 1;
+      else summary.high += 1;
+      return summary;
+    },
+    { total: 0, critical: 0, high: 0 },
+  );
+}

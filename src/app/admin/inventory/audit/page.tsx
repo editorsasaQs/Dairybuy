@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Container } from "@/components/brand/Container";
 import { isAdminOrOwner } from "@/lib/services/auth-service";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { filterInventoryAuditByArea, filterInventoryAuditByProduct, filterInventoryAuditFindings, resolveInventoryAuditLabels, type InventoryAuditArea, type InventoryAuditProduct, type InventoryAuditVariant } from "@/lib/services/inventory-audit-labels";
+import { filterInventoryAuditByArea, filterInventoryAuditByProduct, filterInventoryAuditFindings, getInventoryAuditSeverity, resolveInventoryAuditLabels, summarizeInventoryAuditSeverity, type InventoryAuditArea, type InventoryAuditProduct, type InventoryAuditVariant } from "@/lib/services/inventory-audit-labels";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -60,6 +60,12 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
   const validProductValues = new Set([...availableProducts.map(([id]) => id), ...(hasUnresolvedProduct ? ["unresolved"] : [])]);
   const selectedProduct = requestedProduct && validProductValues.has(requestedProduct) ? requestedProduct : null;
   const filteredRows = filterInventoryAuditByProduct(areaFilteredRows, selectedProduct);
+  const severitySummary = summarizeInventoryAuditSeverity(filteredRows);
+  const orderIds = [...new Set(rows.flatMap((row) => row.order_id ? [row.order_id] : []))];
+  const orderResult = orderIds.length
+    ? await supabase.from("orders").select("id,order_number").in("id", orderIds)
+    : null;
+  const orderNumbers = new Map((orderResult?.data ?? []).map((order) => [order.id, order.order_number]));
   const auditHref = (type: string | null, area: string | null, product: string | null) => {
     const params = new URLSearchParams();
     if (type) params.set("type", type);
@@ -106,6 +112,11 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
               <p className="text-sm text-muted-foreground">Findings requiring review</p>
               <p className="mt-1 text-3xl font-bold tabular-nums">{formatStock(filteredRows.length)} <span className="text-sm font-medium text-muted-foreground">of {formatStock(rows.length)}</span></p>
               <p className="mt-2 text-xs text-muted-foreground">Read-only report. This page never repairs or adjusts stock automatically.</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl bg-[#f3f7f8] p-3"><p className="text-xs font-semibold text-muted-foreground">Total findings</p><p className="mt-1 text-xl font-bold tabular-nums">{formatStock(severitySummary.total)}</p></div>
+                <div className="rounded-2xl border border-[#f2c6c2] bg-[#fff3f1] p-3"><p className="text-xs font-semibold text-[#9f3028]">Critical</p><p className="mt-1 text-xl font-bold tabular-nums text-[#9f3028]">{formatStock(severitySummary.critical)}</p></div>
+                <div className="rounded-2xl border border-[#f1d9a8] bg-[#fff8e7] p-3"><p className="text-xs font-semibold text-[#805b18]">High</p><p className="mt-1 text-xl font-bold tabular-nums text-[#805b18]">{formatStock(severitySummary.high)}</p></div>
+              </div>
             </section>
             {!labelsAvailable ? <p role="status" className="mb-4 rounded-2xl border border-[#f1d9a8] bg-[#fff8e7] p-4 text-sm text-muted-foreground">Some catalogue details could not be resolved. Stable product and area IDs remain visible below; no inventory values were changed.</p> : null}
             <nav aria-label="Filter inventory audit by discrepancy type" className="mb-4 flex flex-wrap gap-2">
@@ -160,10 +171,14 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
                 <article key={`${row.audit_type}-${row.inventory_id}-${row.order_id ?? index}`} className="rounded-3xl border-2 border-white bg-white p-5 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${getInventoryAuditSeverity(row) === "critical" ? "bg-[#fff0ee] text-[#a12e25]" : "bg-[#fff7e6] text-[#805b18]"}`}>{getInventoryAuditSeverity(row)} severity</span>
+                        <span className="text-xs text-muted-foreground">{row.audit_type.replaceAll("_", " ")}</span>
+                      </div>
                       <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{row.audit_type === "inventory_balance" ? "Inventory balance mismatch" : "Order reservation anomaly"}</p>
                       <h2 className="mt-1 font-bold">{row.productLabel}</h2><p className="mt-1 break-all text-xs text-muted-foreground">Variant ID: {row.productId}</p>
                     </div>
-                    {row.order_id ? <Link href={`/admin/orders/${row.order_id}`} className="text-sm font-semibold text-highlight-ink underline">Open order</Link> : null}
+                    {row.order_id ? <Link href={`/admin/orders/${row.order_id}`} className="text-sm font-semibold text-highlight-ink underline">Open {orderNumbers.get(row.order_id) ?? `order ${row.order_id.slice(0, 8)}`}</Link> : null}
                   </div>
                   <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
                     <div><dt className="text-xs text-muted-foreground">Recorded reserved stock</dt><dd className="mt-1 font-bold tabular-nums">{formatStock(row.recorded_reserved_stock)}</dd></div>

@@ -6,6 +6,19 @@ import { isValidOrderId } from "@/lib/services/admin-order-filters";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { OrderStatusActions } from "./OrderStatusActions";
 import { parseOrderDeliveryAddressSnapshot } from "@/lib/services/order-address-snapshot";
+import { getInventoryAuditSeverity, resolveInventoryAuditLabels, summarizeInventoryAuditSeverity, type InventoryAuditProduct, type InventoryAuditVariant } from "@/lib/services/inventory-audit-labels";
+
+type OrderAuditFinding = {
+  audit_type: string;
+  inventory_id: string;
+  order_id: string | null;
+  product_variant_id: string;
+  service_area_id: string | null;
+  recorded_reserved_stock: number;
+  ledger_reserved_stock: number;
+  order_status: string | null;
+  detail: string;
+};
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -37,15 +50,31 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
     .maybeSingle();
   if (error || !order) notFound();
 
-  const [itemsResult, slotResult, areaResult, historyResult] = await Promise.all([
+  const [itemsResult, slotResult, areaResult, historyResult, auditResult] = await Promise.all([
     supabase.from("order_items").select("id,product_name_snapshot,variant_name_snapshot,brand_snapshot,pack_size_snapshot,vendor_name_snapshot,quantity,quantity_litres,unit_price_paise,total_price_paise").eq("order_id", order.id).order("id"),
     supabase.from("delivery_slots").select("label,start_time,end_time").eq("id", order.delivery_slot_id).maybeSingle(),
-    supabase.from("service_areas").select("name,city,state").eq("id", order.service_area_id).maybeSingle(),
+    supabase.from("service_areas").select("id,name,city,state").eq("id", order.service_area_id).maybeSingle(),
     supabase.from("order_status_history").select("from_status,to_status,changed_by,note,created_at").eq("order_id", order.id).order("created_at", { ascending: true }),
+    supabase.rpc("audit_inventory_reservations"),
   ]);
   if (itemsResult.error || slotResult.error || areaResult.error || historyResult.error) {
     throw new Error("Unable to load order details.");
   }
+
+  const orderAuditRows = ((auditResult.data ?? []) as unknown as OrderAuditFinding[]).filter((finding) => finding.order_id === order.id);
+  const auditVariantIds = [...new Set(orderAuditRows.map((finding) => finding.product_variant_id))];
+  const auditVariantsResult = auditVariantIds.length
+    ? await supabase.from("product_variants").select("id,product_id,variant_name,pack_size,brand").in("id", auditVariantIds)
+    : null;
+  const auditVariants = (auditVariantsResult?.data ?? []) as InventoryAuditVariant[];
+  const auditProductIds = [...new Set(auditVariants.map((variant) => variant.product_id))];
+  const auditProductsResult = auditProductIds.length
+    ? await supabase.from("products").select("id,name").in("id", auditProductIds)
+    : null;
+  const auditProducts = (auditProductsResult?.data ?? []) as InventoryAuditProduct[];
+  const auditLabelsAvailable = !auditVariantIds.length || (!auditVariantsResult?.error && (!auditProductIds.length || !auditProductsResult?.error));
+  const orderAuditDisplayRows = resolveInventoryAuditLabels(orderAuditRows, auditVariants, auditProducts, areaResult.data ? [areaResult.data] : []);
+  const orderAuditSummary = summarizeInventoryAuditSeverity(orderAuditDisplayRows);
 
   const address = parseOrderDeliveryAddressSnapshot(order.delivery_address_snapshot);
   const slot = slotResult.data;
@@ -88,6 +117,43 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
             {(itemsResult.data ?? []).map((item) => <li key={item.id} className="flex flex-wrap justify-between gap-3 py-3 text-sm"><div><p className="font-semibold">{item.product_name_snapshot ?? "Dairybuy product"}</p><p className="text-xs text-muted-foreground">{[item.variant_name_snapshot,item.brand_snapshot,item.pack_size_snapshot,item.vendor_name_snapshot].filter(Boolean).join(" · ")} · Qty {item.quantity}{item.quantity_litres ? ` · ${item.quantity_litres} L` : ""}</p><p className="mt-1 text-xs text-muted-foreground">{formatInr(item.unit_price_paise)} each</p></div><p className="font-bold tabular-nums">{formatInr(item.total_price_paise)}</p></li>)}
           </ul>
           <dl className="mt-3 space-y-2 border-t border-border pt-4 text-sm"><div className="flex justify-between"><dt>Subtotal</dt><dd>{formatInr(order.subtotal_paise)}</dd></div><div className="flex justify-between"><dt>Delivery fee</dt><dd>{formatInr(order.delivery_fee_paise)}</dd></div><div className="flex justify-between text-base font-bold"><dt>Total</dt><dd>{formatInr(order.total_paise)}</dd></div></dl>
+        </section>
+
+        <section className="mt-4 rounded-3xl border-2 border-white bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><h2 className="font-bold">Inventory reservation audit</h2><p className="mt-1 text-xs text-muted-foreground">Read-only reconciliation context for this order</p></div>
+            <Link href="/admin/inventory/audit?type=order_ledger" className="text-sm font-semibold text-highlight-ink underline">Open full inventory audit</Link>
+          </div>
+          {auditResult.error ? (
+            <p role="status" className="mt-4 rounded-xl border border-[#f1d9a8] bg-[#fff8e7] p-3 text-sm text-muted-foreground">Order-specific audit context is temporarily unavailable. The order itself loaded successfully; no inventory values were changed.</p>
+          ) : orderAuditDisplayRows.length === 0 ? (
+            <p className="mt-4 rounded-xl bg-[#f3f7f8] p-3 text-sm text-muted-foreground">No order-specific reservation ledger anomalies are currently reported by the read-only audit.</p>
+          ) : (
+            <>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl bg-[#f3f7f8] p-3"><p className="text-xs text-muted-foreground">Findings</p><p className="mt-1 text-xl font-bold tabular-nums">{orderAuditSummary.total}</p></div>
+                <div className="rounded-2xl border border-[#f2c6c2] bg-[#fff3f1] p-3"><p className="text-xs font-semibold text-[#9f3028]">Critical</p><p className="mt-1 text-xl font-bold tabular-nums text-[#9f3028]">{orderAuditSummary.critical}</p></div>
+                <div className="rounded-2xl border border-[#f1d9a8] bg-[#fff8e7] p-3"><p className="text-xs font-semibold text-[#805b18]">High</p><p className="mt-1 text-xl font-bold tabular-nums text-[#805b18]">{orderAuditSummary.high}</p></div>
+              </div>
+              {!auditLabelsAvailable ? <p role="status" className="mt-3 text-xs text-muted-foreground">Some catalogue labels could not be resolved; stable variant IDs remain available.</p> : null}
+              <ul className="mt-3 divide-y divide-border">
+                {orderAuditDisplayRows.map((finding, index) => (
+                  <li key={`${finding.inventory_id}-${index}`} className="py-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold">{finding.productLabel}</p>
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${getInventoryAuditSeverity(finding) === "critical" ? "bg-[#fff0ee] text-[#a12e25]" : "bg-[#fff7e6] text-[#805b18]"}`}>{getInventoryAuditSeverity(finding)} severity</span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">Variant {finding.productId} · {finding.areaLabel ?? "Service area unavailable"} · {finding.order_status?.replaceAll("_", " ") ?? "Status unavailable"}</p>
+                    <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                      <div><dt className="text-xs text-muted-foreground">Recorded reserved stock</dt><dd className="font-bold tabular-nums">{finding.recorded_reserved_stock}</dd></div>
+                      <div><dt className="text-xs text-muted-foreground">Order ledger balance</dt><dd className="font-bold tabular-nums">{finding.ledger_reserved_stock}</dd></div>
+                    </dl>
+                    <p className="mt-3 rounded-xl bg-[#f8fbfc] p-3 text-sm text-muted-foreground">{finding.detail}</p>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </section>
 
         <OrderStatusActions orderId={order.id} currentStatus={order.status} />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterInventoryAuditByArea, filterInventoryAuditByProduct, filterInventoryAuditFindings, resolveInventoryAuditLabels } from "./inventory-audit-labels";
+import { filterInventoryAuditByArea, filterInventoryAuditByProduct, filterInventoryAuditFindings, getInventoryAuditSeverity, resolveInventoryAuditLabels, summarizeInventoryAuditSeverity } from "./inventory-audit-labels";
 
 const finding = {
   product_variant_id: "cow-milk-500",
@@ -108,5 +108,29 @@ describe("filterInventoryAuditByProduct", () => {
   it("returns all findings for no or unknown product filters", () => {
     expect(filterInventoryAuditByProduct(findings, null)).toEqual(findings);
     expect(filterInventoryAuditByProduct(findings, "unknown-product")).toEqual(findings);
+  });
+});
+
+describe("inventory audit severity", () => {
+  it("marks impossible active-order and negative ledger balances as critical", () => {
+    expect(getInventoryAuditSeverity({ audit_type: "order_ledger", ledger_reserved_stock: 0, order_status: "confirmed" })).toBe("critical");
+    expect(getInventoryAuditSeverity({ audit_type: "order_ledger", ledger_reserved_stock: -1, order_status: "cancelled" })).toBe("critical");
+  });
+
+  it("marks non-zero reservations on terminal orders as critical", () => {
+    expect(getInventoryAuditSeverity({ audit_type: "order_ledger", ledger_reserved_stock: 2, order_status: "delivered" })).toBe("critical");
+  });
+
+  it("marks counter drift and other order ledger anomalies high", () => {
+    expect(getInventoryAuditSeverity({ audit_type: "inventory_balance", ledger_reserved_stock: 4, order_status: null })).toBe("high");
+    expect(getInventoryAuditSeverity({ audit_type: "order_ledger", ledger_reserved_stock: 1, order_status: "processing" })).toBe("high");
+  });
+
+  it("summarizes total, critical and high findings", () => {
+    expect(summarizeInventoryAuditSeverity([
+      { audit_type: "order_ledger", ledger_reserved_stock: 0, order_status: "confirmed" },
+      { audit_type: "inventory_balance", ledger_reserved_stock: 3, order_status: null },
+      { audit_type: "order_ledger", ledger_reserved_stock: 1, order_status: "processing" },
+    ])).toEqual({ total: 3, critical: 1, high: 2 });
   });
 });
