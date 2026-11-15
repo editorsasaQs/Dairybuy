@@ -10,7 +10,7 @@ Dairybuy subscriptions use per-delivery COD. The plan total is an operational sc
 - Every delivery is financially independent. Cash collection and verification affect only the matching daily order/payment.
 - Owner/admin records cash only after marking the delivery complete, then verifies, rejects or resolves the collection. Customers can confirm receipt after the delivery is marked out for delivery.
 - Exact cash amount is required for verification. A mismatch is disputed and remains pending until owner/admin discrepancy reconciliation.
-- Staff cash handover and owner/admin financial reports include subscription COD collections, with assignment/date/slot/area scoping.
+- Owner/admin financial reports include subscription COD collections. Assignment-scoped staff cash-handover RPCs remain for legacy compatibility, but no staff-facing handover interface is exposed in this release.
 - One-time COD collection, review, discrepancy and handover authorization remain in place.
 
 ## Database implementation
@@ -40,6 +40,6 @@ The daily payment is order-scoped (`payments.order_id`); the subscription agreem
 - `supabase/tests/database/phase5_6_subscription_per_delivery_cod.test.sql` checks the database contract, SECURITY DEFINER boundary, generator and cash lifecycle extensions.
 - Authenticated browser regression uses a specific confirmation-message selector rather than an ambiguous generic status locator.
 - CI runs the new pgTAP test alongside the existing Phase 4.5 COD, Phase 5 lifecycle, delivery, inventory and concurrency regressions.
-- The migration must be replayed on a fresh local Supabase stack before merge. The follow-up Phase 5.7 migration enforces the two-interface delivery workflow: owner/admin operations plus customer receipt confirmation; there is no delivery-agent UI. The follow-up Phase 5.7 migration enforces the two-interface delivery workflow: owner/admin operations plus customer receipt confirmation; there is no delivery-agent UI.
+- The migration must be replayed on a fresh local Supabase stack before merge. The follow-up Phase 5.7 migration enforces the two-interface delivery workflow: owner/admin operations plus customer receipt confirmation; there is no delivery-agent UI.
 - Development migration ledger/schema reconciliation remains required before applying to Dairybuy-dev.
 - Production remains untouched until separate approval for ordered production migrations.
