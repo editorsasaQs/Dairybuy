@@ -1,4 +1,4 @@
--- Phase 5.1–5.2 subscription quote and pending-payment contract.
+-- Phase 5.1–5.6 subscription quote and per-delivery COD checkout contract.
 BEGIN;
 SELECT extensions.plan(16);
 
@@ -79,11 +79,13 @@ SELECT extensions.ok(
   'subscription tables retain row-level security'
 );
 SELECT extensions.ok(
-  position('pending_payment' IN pg_get_functiondef(
+  position('''active'',p_start_date' IN pg_get_functiondef(
+    'private.create_subscription_payment_intent(uuid,uuid,date,public.subscription_plan_enum,jsonb,uuid)'::regprocedure))>0
+  AND position('''cod'',''pending'',''cod''' IN pg_get_functiondef(
     'private.create_subscription_payment_intent(uuid,uuid,date,public.subscription_plan_enum,jsonb,uuid)'::regprocedure))>0
   AND position('pending_online' IN pg_get_functiondef(
-    'private.create_subscription_payment_intent(uuid,uuid,date,public.subscription_plan_enum,jsonb,uuid)'::regprocedure))>0,
-  'subscription checkout creates pending online intent and does not activate subscription'
+    'private.create_subscription_payment_intent(uuid,uuid,date,public.subscription_plan_enum,jsonb,uuid)'::regprocedure))=0,
+  'subscription checkout activates the COD plan agreement without online payment or client-set payment state'
 );
 SELECT extensions.ok(
   position('Only fixed 7-day and 30-day' IN pg_get_functiondef(
@@ -108,8 +110,9 @@ SELECT extensions.ok(
 );
 SELECT extensions.ok(
   EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.payments'::regclass
-    AND conname='chk_subscription_payment_online_only'),
-  'subscription payment constraint prohibits COD'
+    AND conname='chk_subscription_payment_cod_or_online'
+    AND pg_get_constraintdef(oid) LIKE '%gateway = ''cod''%'),
+  'subscription payment constraint permits the COD plan agreement marker'
 );
 
 SELECT * FROM extensions.finish();
