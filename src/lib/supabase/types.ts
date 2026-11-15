@@ -1774,6 +1774,18 @@ export type Database = {
           handover_expected_paise: number | null; handover_received_paise: number | null;
         }[]
       }
+      correct_delivery_cash_handover: {
+        Args: { p_handover_id: string; p_corrected_received_amount_paise: number; p_reason: string; p_evidence_reference?: string | null }
+        Returns: { handover_id: string; handover_status: string; expected_amount_paise: number; received_amount_paise: number; was_replayed: boolean }[]
+      }
+      get_my_unhanded_cod_collections: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          collection_id: string; order_id: string; order_number: string; business_date: string;
+          service_area_id: string; service_area_name: string; delivery_slot_id: string; delivery_slot: string;
+          amount_collected_paise: number; collection_status: string; collected_at: string;
+        }[]
+      }
       set_customer_default_address: { Args: { p_address_id: string }; Returns: undefined }
     }
     Enums: {
