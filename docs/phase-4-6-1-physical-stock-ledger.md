@@ -17,7 +17,7 @@ This keeps reservations from being mistaken for physical stock consumption. Fulf
 
 ## Database objects
 
-Migration: `20261115250000_phase4_6_1_physical_stock_ledger_receiving_adjustments.sql`
+Migration: `20261115131405_phase4_6_1_physical_stock_ledger_receiving_adjustments.sql`
 
 - `inventory_receipts`: vendor, service area, receipt number, receiving actor, timestamp, reference, notes, idempotency key and totals.
 - `inventory_receipt_items`: SKU-level received quantity, purchase unit cost and line total.
@@ -37,4 +37,4 @@ Direct authenticated writes to `inventory` and `inventory_movements` are revoked
 - Fresh local Supabase migration replay.
 - pgTAP for receipt totals, purchase cost, idempotency, spoilage, damage, positive/negative stocktake, reserved-stock protection, immutable movements, role boundaries and audit drift detection.
 - Existing order-reservation and concurrency tests remain green.
-- No hosted migration is applied until the 13 pending migrations after the reconciled baseline have passed full CI and are applied in order to Dairybuy-dev.
+- All 13 forward migrations after the reconciled baseline have passed full CI and are applied to Dairybuy-dev. Repository filenames are being aligned to the exact remote migration versions before any future CLI push.
