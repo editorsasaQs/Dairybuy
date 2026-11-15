@@ -13,7 +13,7 @@ export default async function SubscriptionsPage() {
   return <main className="db-page py-(--section-y)"><Container className="max-w-4xl">
     <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
       <div><p className="text-sm font-semibold text-highlight-ink">Your Dairybuy account</p><h1 className="mt-2 text-3xl font-bold">Milk subscriptions</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Manage your daily milk plan, pause or resume deliveries, skip a future date and review your delivery calendar.</p></div>
-      <Link href="/account" className="text-sm font-semibold text-highlight-ink underline">Back to account</Link>
+      <div className="flex gap-4"><Link href="/subscriptions/new" className="text-sm font-semibold text-highlight-ink underline">Build a milk plan</Link><Link href="/account" className="text-sm font-semibold text-highlight-ink underline">Back to account</Link></div>
     </div>
     <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><strong>Online payment setup is pending.</strong> Subscription checkout is not available yet. Existing subscriptions remain payment-gated; this page will never mark a plan paid or collect money.</div>
     <SubscriptionDashboard />
