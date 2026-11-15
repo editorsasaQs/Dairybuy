@@ -329,13 +329,13 @@ BEGIN
   PERFORM pg_catalog.pg_advisory_xact_lock(
     pg_catalog.hashtextextended(v_customer::text||':'||p_idempotency_key::text,0)
   );
-  SELECT s.id,s.subscription_number,p.id,p.amount_paise,s.status
+  SELECT s.id AS subscription_id,s.subscription_number,p.id AS payment_id,p.amount_paise,s.status
     INTO v_existing
   FROM public.subscriptions s
   JOIN public.payments p ON p.subscription_id=s.id
   WHERE s.customer_id=v_customer AND s.idempotency_key=p_idempotency_key;
   IF FOUND THEN
-    RETURN QUERY SELECT v_existing.id,v_existing.subscription_number,v_existing.id,
+    RETURN QUERY SELECT v_existing.subscription_id,v_existing.subscription_number,v_existing.payment_id,
       v_existing.amount_paise,v_existing.status,true;
     RETURN;
   END IF;
