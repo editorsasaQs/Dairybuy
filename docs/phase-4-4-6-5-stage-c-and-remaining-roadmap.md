@@ -35,7 +35,7 @@ One-time COD and subscription delivery COD remain separate order-scoped payment 
 
 ## Phase 4.6 — physical stock receiving and adjustments
 
-### Phase 4.6.1 — immutable stock ledger and database operations (this PR)
+### Phase 4.6.1 — immutable stock ledger and database operations (completed and applied to Dairybuy-dev)
 - Vendor receipt headers and per-SKU receipt lines, including received quantity and purchase cost.
 - Atomic owner/admin stock receiving, with idempotency and immutable `stock_receipt` movements.
 - Audited spoilage, damage and stocktake adjustments with signed movements.
