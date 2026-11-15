@@ -98,6 +98,10 @@ jobs:
           src/components/subscriptions/SubscriptionQuoteBuilder.tsx
           src/app/orders/[id]/page.tsx
           src/app/admin/orders/page.tsx
+          src/app/admin/inventory/actions.ts
+          src/app/admin/inventory/page.tsx
+          src/app/admin/inventory/InventoryReceiptForm.tsx
+          src/app/admin/inventory/InventoryAdjustmentForm.tsx
           src/app/admin/inventory/audit/page.tsx
           src/app/admin/inventory/audit/loading.tsx
           src/app/admin/inventory/audit/error.tsx

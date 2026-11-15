@@ -43,10 +43,10 @@ SELECT extensions.ok(
   'private collection RPC is SECURITY DEFINER with empty search_path'
 );
 SELECT extensions.ok(
-  has_function_privilege('authenticated','public.assign_cod_order_to_delivery(uuid,uuid)','EXECUTE')
+  NOT has_function_privilege('authenticated','public.assign_cod_order_to_delivery(uuid,uuid)','EXECUTE')
   AND NOT has_function_privilege('anon','public.assign_cod_order_to_delivery(uuid,uuid)','EXECUTE')
   AND NOT has_function_privilege('authenticated','private.assign_cod_order_to_delivery(uuid,uuid)','EXECUTE'),
-  'only authenticated users can invoke the assignment wrapper'
+  'delivery assignment RPC is not exposed in the no-agent launch boundary'
 );
 SELECT extensions.ok(
   has_function_privilege('authenticated','public.record_cod_cash_collection(uuid,integer,text,text)','EXECUTE')
@@ -63,11 +63,11 @@ SELECT extensions.ok(
 SELECT extensions.ok(
   position('da.staff_id=v_actor' IN pg_get_functiondef(
     'private.record_cod_cash_collection(uuid,integer,text,text)'::regprocedure
-  ))>0
-  AND position('private.is_admin_or_owner()' IN pg_get_functiondef(
+  ))=0
+  AND position('IF v_actor IS NULL OR NOT private.is_admin_or_owner()' IN pg_get_functiondef(
     'private.record_cod_cash_collection(uuid,integer,text,text)'::regprocedure
   ))>0,
-  'collection authorization requires assigned delivery staff or owner/admin'
+  'cash collection is restricted to authenticated owner/admin and excludes delivery staff'
 );
 SELECT extensions.ok(
   position('v_order.status<>' || chr(39) || 'delivered' || chr(39) IN pg_get_functiondef(

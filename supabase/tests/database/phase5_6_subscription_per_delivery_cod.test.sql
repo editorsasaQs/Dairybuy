@@ -54,8 +54,10 @@ SELECT extensions.ok(
   strpos(pg_get_functiondef('private.record_cod_cash_collection(uuid,integer,text,text)'::regprocedure),
     'NOT IN (''one_time'',''subscription'')')>0
   AND strpos(pg_get_functiondef('private.record_cod_cash_collection(uuid,integer,text,text)'::regprocedure),
-    'subscription_deliveries sd')>0,
-  'cash collection supports assigned subscription deliveries without removing one-time assignment checks'
+    'IF v_actor IS NULL OR NOT private.is_admin_or_owner()')>0
+  AND strpos(pg_get_functiondef('private.record_cod_cash_collection(uuid,integer,text,text)'::regprocedure),
+    'v_assignment_authorized')=0,
+  'owner/admin cash collection supports one-time and subscription deliveries without delivery-staff RPC access'
 );
 SELECT extensions.ok(
   strpos(pg_get_functiondef('private.review_cod_cash_collection(uuid,text,text)'::regprocedure),

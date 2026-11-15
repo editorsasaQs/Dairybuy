@@ -65,13 +65,15 @@ SELECT extensions.ok(
   'only service role can invoke scheduled delivery generation'
 );
 SELECT extensions.ok(
-  has_function_privilege('authenticated','public.assign_subscription_delivery(uuid,uuid)','EXECUTE')
+  NOT has_function_privilege('authenticated','public.assign_subscription_delivery(uuid,uuid)','EXECUTE')
   AND has_function_privilege('authenticated','public.start_subscription_delivery(uuid)','EXECUTE')
   AND has_function_privilege('authenticated','public.complete_subscription_delivery(uuid)','EXECUTE')
   AND has_function_privilege('authenticated','public.fail_subscription_delivery(uuid,text)','EXECUTE')
   AND NOT has_function_privilege('anon','public.assign_subscription_delivery(uuid,uuid)','EXECUTE')
-  AND NOT has_function_privilege('anon','public.complete_subscription_delivery(uuid)','EXECUTE'),
-  'delivery operations are authenticated-only RPCs'
+  AND NOT has_function_privilege('anon','public.start_subscription_delivery(uuid)','EXECUTE')
+  AND NOT has_function_privilege('anon','public.complete_subscription_delivery(uuid)','EXECUTE')
+  AND NOT has_function_privilege('anon','public.fail_subscription_delivery(uuid,text)','EXECUTE'),
+  'delivery assignment is closed while authenticated delivery lifecycle RPCs remain available'
 );
 SELECT extensions.ok(
   (SELECT prosecdef AND proconfig @> ARRAY['search_path=""'] FROM pg_proc

@@ -202,6 +202,47 @@ export type Database = {
         }
         Relationships: []
       }
+      cod_collection_adjustments: {
+        Row: {
+          collection_id: string
+          created_at: string
+          created_by: string
+          evidence_reference: string | null
+          id: string
+          new_amount_paise: number
+          old_amount_paise: number
+          reason: string
+        }
+        Insert: {
+          collection_id: string
+          created_at?: string
+          created_by: string
+          evidence_reference?: string | null
+          id?: string
+          new_amount_paise: number
+          old_amount_paise: number
+          reason: string
+        }
+        Update: {
+          collection_id?: string
+          created_at?: string
+          created_by?: string
+          evidence_reference?: string | null
+          id?: string
+          new_amount_paise?: number
+          old_amount_paise?: number
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cod_collection_adjustments_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "cod_collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cod_collections: {
         Row: {
           amount_collected_paise: number
@@ -211,9 +252,9 @@ export type Database = {
           id: string
           order_id: string
           receipt_reference: string | null
-          rejection_reason: string | null
           rejected_at: string | null
           rejected_by_manager_id: string | null
+          rejection_reason: string | null
           status: string
           verified_at: string | null
           verified_by_manager_id: string | null
@@ -226,9 +267,9 @@ export type Database = {
           id?: string
           order_id: string
           receipt_reference?: string | null
-          rejection_reason?: string | null
           rejected_at?: string | null
           rejected_by_manager_id?: string | null
+          rejection_reason?: string | null
           status?: string
           verified_at?: string | null
           verified_by_manager_id?: string | null
@@ -241,9 +282,9 @@ export type Database = {
           id?: string
           order_id?: string
           receipt_reference?: string | null
-          rejection_reason?: string | null
           rejected_at?: string | null
           rejected_by_manager_id?: string | null
+          rejection_reason?: string | null
           status?: string
           verified_at?: string | null
           verified_by_manager_id?: string | null
@@ -320,6 +361,45 @@ export type Database = {
           },
         ]
       }
+      delivery_assignment_orders: {
+        Row: {
+          assigned_at: string
+          assigned_by: string
+          delivery_assignment_id: string
+          id: string
+          order_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by: string
+          delivery_assignment_id: string
+          id?: string
+          order_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string
+          delivery_assignment_id?: string
+          id?: string
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_assignment_orders_delivery_assignment_id_fkey"
+            columns: ["delivery_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_assignment_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_assignments: {
         Row: {
           assigned_at: string
@@ -364,6 +444,155 @@ export type Database = {
           },
           {
             foreignKeyName: "delivery_assignments_service_area_id_fkey"
+            columns: ["service_area_id"]
+            isOneToOne: false
+            referencedRelation: "service_areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_cash_handover_adjustments: {
+        Row: {
+          created_at: string
+          created_by: string
+          evidence_reference: string | null
+          handover_id: string
+          id: string
+          new_received_amount_paise: number
+          old_received_amount_paise: number
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          evidence_reference?: string | null
+          handover_id: string
+          id?: string
+          new_received_amount_paise: number
+          old_received_amount_paise: number
+          reason: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          evidence_reference?: string | null
+          handover_id?: string
+          id?: string
+          new_received_amount_paise?: number
+          old_received_amount_paise?: number
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_cash_handover_adjustments_handover_id_fkey"
+            columns: ["handover_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_cash_handovers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_cash_handover_items: {
+        Row: {
+          amount_paise: number
+          collection_id: string
+          created_at: string
+          handover_id: string
+          id: string
+        }
+        Insert: {
+          amount_paise: number
+          collection_id: string
+          created_at?: string
+          handover_id: string
+          id?: string
+        }
+        Update: {
+          amount_paise?: number
+          collection_id?: string
+          created_at?: string
+          handover_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_cash_handover_items_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: true
+            referencedRelation: "cod_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_cash_handover_items_handover_id_fkey"
+            columns: ["handover_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_cash_handovers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_cash_handovers: {
+        Row: {
+          business_date: string
+          delivery_slot_id: string
+          expected_amount_paise: number
+          handover_number: string
+          id: string
+          idempotency_key: string
+          received_amount_paise: number
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          service_area_id: string
+          staff_id: string
+          status: string
+          submitted_at: string
+          submitted_by: string
+        }
+        Insert: {
+          business_date: string
+          delivery_slot_id: string
+          expected_amount_paise: number
+          handover_number: string
+          id?: string
+          idempotency_key: string
+          received_amount_paise: number
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          service_area_id: string
+          staff_id: string
+          status?: string
+          submitted_at?: string
+          submitted_by: string
+        }
+        Update: {
+          business_date?: string
+          delivery_slot_id?: string
+          expected_amount_paise?: number
+          handover_number?: string
+          id?: string
+          idempotency_key?: string
+          received_amount_paise?: number
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          service_area_id?: string
+          staff_id?: string
+          status?: string
+          submitted_at?: string
+          submitted_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_cash_handovers_delivery_slot_id_fkey"
+            columns: ["delivery_slot_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_cash_handovers_service_area_id_fkey"
             columns: ["service_area_id"]
             isOneToOne: false
             referencedRelation: "service_areas"
@@ -493,6 +722,181 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "inventory_movements_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_receipt_items: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_id: string
+          line_total_paise: number | null
+          product_variant_id: string
+          quantity_received: number
+          receipt_id: string
+          unit_cost_paise: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_id: string
+          line_total_paise?: number | null
+          product_variant_id: string
+          quantity_received: number
+          receipt_id: string
+          unit_cost_paise: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_id?: string
+          line_total_paise?: number | null
+          product_variant_id?: string
+          quantity_received?: number
+          receipt_id?: string
+          unit_cost_paise?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_receipt_items_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_receipt_items_product_variant_id_fkey"
+            columns: ["product_variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_receipt_items_product_variant_id_fkey"
+            columns: ["product_variant_id"]
+            isOneToOne: false
+            referencedRelation: "public_catalogue"
+            referencedColumns: ["variant_id"]
+          },
+          {
+            foreignKeyName: "inventory_receipt_items_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_receipts: {
+        Row: {
+          created_at: string
+          id: string
+          idempotency_key: string
+          notes: string | null
+          receipt_number: string
+          received_at: string
+          received_by: string
+          request_fingerprint: string
+          service_area_id: string
+          total_cost_paise: number
+          total_units: number
+          vendor_id: string
+          vendor_reference: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          notes?: string | null
+          receipt_number: string
+          received_at?: string
+          received_by: string
+          request_fingerprint: string
+          service_area_id: string
+          total_cost_paise?: number
+          total_units?: number
+          vendor_id: string
+          vendor_reference?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          notes?: string | null
+          receipt_number?: string
+          received_at?: string
+          received_by?: string
+          request_fingerprint?: string
+          service_area_id?: string
+          total_cost_paise?: number
+          total_units?: number
+          vendor_id?: string
+          vendor_reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_receipts_service_area_id_fkey"
+            columns: ["service_area_id"]
+            isOneToOne: false
+            referencedRelation: "service_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_receipts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_stock_adjustments: {
+        Row: {
+          adjusted_by: string
+          adjustment_number: string
+          adjustment_type: string
+          created_at: string
+          evidence_reference: string | null
+          id: string
+          idempotency_key: string
+          inventory_id: string
+          quantity_delta: number
+          reason: string
+          request_fingerprint: string
+        }
+        Insert: {
+          adjusted_by: string
+          adjustment_number: string
+          adjustment_type: string
+          created_at?: string
+          evidence_reference?: string | null
+          id?: string
+          idempotency_key: string
+          inventory_id: string
+          quantity_delta: number
+          reason: string
+          request_fingerprint: string
+        }
+        Update: {
+          adjusted_by?: string
+          adjustment_number?: string
+          adjustment_type?: string
+          created_at?: string
+          evidence_reference?: string | null
+          id?: string
+          idempotency_key?: string
+          inventory_id?: string
+          quantity_delta?: number
+          reason?: string
+          request_fingerprint?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_stock_adjustments_inventory_id_fkey"
             columns: ["inventory_id"]
             isOneToOne: false
             referencedRelation: "inventory"
@@ -660,20 +1064,20 @@ export type Database = {
           delivery_address_snapshot_at: string
           delivery_address_snapshot_source: string
           delivery_date: string | null
-          subscription_id: string | null
-          subscription_delivery_id: string | null
-          subscription_discount_paise: number
           delivery_fee_paise: number
-          idempotency_key: string | null
           delivery_notes: string | null
           delivery_slot_id: string
           id: string
+          idempotency_key: string | null
           order_number: string
           order_type: Database["public"]["Enums"]["order_type_enum"]
           payment_method: string | null
           payment_status: Database["public"]["Enums"]["payment_status_enum"]
           service_area_id: string
           status: Database["public"]["Enums"]["order_status_enum"]
+          subscription_delivery_id: string | null
+          subscription_discount_paise: number
+          subscription_id: string | null
           subtotal_paise: number
           total_paise: number
           updated_at: string
@@ -682,24 +1086,24 @@ export type Database = {
           created_at?: string
           customer_address_id: string
           customer_id: string
-          delivery_address_snapshot?: Json
-          delivery_address_snapshot_at?: string
-          delivery_address_snapshot_source?: string
+          delivery_address_snapshot: Json
+          delivery_address_snapshot_at: string
+          delivery_address_snapshot_source: string
           delivery_date?: string | null
-          subscription_id?: string | null
-          subscription_delivery_id?: string | null
-          subscription_discount_paise?: number
           delivery_fee_paise?: number
-          idempotency_key?: string | null
           delivery_notes?: string | null
           delivery_slot_id: string
           id?: string
-          order_number: string
+          idempotency_key?: string | null
+          order_number?: string
           order_type?: Database["public"]["Enums"]["order_type_enum"]
           payment_method?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status_enum"]
           service_area_id: string
           status?: Database["public"]["Enums"]["order_status_enum"]
+          subscription_delivery_id?: string | null
+          subscription_discount_paise?: number
+          subscription_id?: string | null
           subtotal_paise: number
           total_paise: number
           updated_at?: string
@@ -708,26 +1112,36 @@ export type Database = {
           created_at?: string
           customer_address_id?: string
           customer_id?: string
+          delivery_address_snapshot?: Json
+          delivery_address_snapshot_at?: string
+          delivery_address_snapshot_source?: string
           delivery_date?: string | null
-          subscription_id?: string | null
-          subscription_delivery_id?: string | null
-          subscription_discount_paise?: number
           delivery_fee_paise?: number
-          idempotency_key?: string | null
           delivery_notes?: string | null
           delivery_slot_id?: string
           id?: string
+          idempotency_key?: string | null
           order_number?: string
           order_type?: Database["public"]["Enums"]["order_type_enum"]
           payment_method?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status_enum"]
           service_area_id?: string
           status?: Database["public"]["Enums"]["order_status_enum"]
+          subscription_delivery_id?: string | null
+          subscription_discount_paise?: number
+          subscription_id?: string | null
           subtotal_paise?: number
           total_paise?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_orders_subscription_delivery"
+            columns: ["subscription_delivery_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_deliveries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_customer_address_id_fkey"
             columns: ["customer_address_id"]
@@ -747,6 +1161,13 @@ export type Database = {
             columns: ["service_area_id"]
             isOneToOne: false
             referencedRelation: "service_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
             referencedColumns: ["id"]
           },
         ]
@@ -1184,14 +1605,14 @@ export type Database = {
           delivery_date: string
           delivery_notes: string | null
           delivery_slot_id: string
+          discount_paise: number
           failed_at: string | null
           id: string
           order_id: string | null
-          subtotal_paise: number | null
-          discount_paise: number
-          total_paise: number | null
           status: Database["public"]["Enums"]["delivery_status_enum"]
           subscription_id: string
+          subtotal_paise: number | null
+          total_paise: number | null
         }
         Insert: {
           assigned_at?: string | null
@@ -1201,14 +1622,14 @@ export type Database = {
           delivery_date: string
           delivery_notes?: string | null
           delivery_slot_id: string
+          discount_paise?: number
           failed_at?: string | null
           id?: string
           order_id?: string | null
-          subtotal_paise?: number | null
-          discount_paise?: number
-          total_paise?: number | null
           status?: Database["public"]["Enums"]["delivery_status_enum"]
           subscription_id: string
+          subtotal_paise?: number | null
+          total_paise?: number | null
         }
         Update: {
           assigned_at?: string | null
@@ -1218,16 +1639,23 @@ export type Database = {
           delivery_date?: string
           delivery_notes?: string | null
           delivery_slot_id?: string
+          discount_paise?: number
           failed_at?: string | null
           id?: string
           order_id?: string | null
-          subtotal_paise?: number | null
-          discount_paise?: number
-          total_paise?: number | null
           status?: Database["public"]["Enums"]["delivery_status_enum"]
           subscription_id?: string
+          subtotal_paise?: number | null
+          total_paise?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_subscription_deliveries_order"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "subscription_deliveries_delivery_slot_id_fkey"
             columns: ["delivery_slot_id"]
@@ -1244,6 +1672,71 @@ export type Database = {
           },
         ]
       }
+      subscription_item_vendor_changes: {
+        Row: {
+          created_at: string
+          created_by: string
+          effective_from: string
+          id: string
+          idempotency_key: string
+          new_vendor_id: string
+          old_vendor_id: string
+          subscription_id: string
+          subscription_item_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          effective_from: string
+          id?: string
+          idempotency_key: string
+          new_vendor_id: string
+          old_vendor_id: string
+          subscription_id: string
+          subscription_item_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          effective_from?: string
+          id?: string
+          idempotency_key?: string
+          new_vendor_id?: string
+          old_vendor_id?: string
+          subscription_id?: string
+          subscription_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_item_vendor_changes_new_vendor_id_fkey"
+            columns: ["new_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_item_vendor_changes_old_vendor_id_fkey"
+            columns: ["old_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_item_vendor_changes_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_item_vendor_changes_subscription_item_id_fkey"
+            columns: ["subscription_item_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_items: {
         Row: {
           created_at: string
@@ -1252,13 +1745,13 @@ export type Database = {
           milk_type: Database["public"]["Enums"]["milk_type_enum"] | null
           price_per_delivery_paise: number
           product_name_snapshot: string | null
-          variant_name_snapshot: string | null
-          vendor_name_snapshot: string | null
           product_variant_id: string
           quantity: number
           quantity_litres: number | null
           subscription_id: string
+          variant_name_snapshot: string | null
           vendor_id: string | null
+          vendor_name_snapshot: string | null
         }
         Insert: {
           created_at?: string
@@ -1267,13 +1760,13 @@ export type Database = {
           milk_type?: Database["public"]["Enums"]["milk_type_enum"] | null
           price_per_delivery_paise: number
           product_name_snapshot?: string | null
-          variant_name_snapshot?: string | null
-          vendor_name_snapshot?: string | null
           product_variant_id: string
           quantity: number
           quantity_litres?: number | null
           subscription_id: string
+          variant_name_snapshot?: string | null
           vendor_id?: string | null
+          vendor_name_snapshot?: string | null
         }
         Update: {
           created_at?: string
@@ -1282,13 +1775,13 @@ export type Database = {
           milk_type?: Database["public"]["Enums"]["milk_type_enum"] | null
           price_per_delivery_paise?: number
           product_name_snapshot?: string | null
-          variant_name_snapshot?: string | null
-          vendor_name_snapshot?: string | null
           product_variant_id?: string
           quantity?: number
           quantity_litres?: number | null
           subscription_id?: string
+          variant_name_snapshot?: string | null
           vendor_id?: string | null
+          vendor_name_snapshot?: string | null
         }
         Relationships: [
           {
@@ -1317,6 +1810,44 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_lifecycle_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          effective_date: string | null
+          event_type: string
+          id: string
+          metadata: Json
+          subscription_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          effective_date?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json
+          subscription_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          effective_date?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_lifecycle_events_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
             referencedColumns: ["id"]
           },
         ]
@@ -1408,48 +1939,16 @@ export type Database = {
           },
         ]
       }
-      subscription_item_vendor_changes: {
-        Row: {
-          id: string; subscription_id: string; subscription_item_id: string;
-          old_vendor_id: string; new_vendor_id: string; effective_from: string;
-          idempotency_key: string; created_by: string; created_at: string;
-        }
-        Insert: {
-          id?: string; subscription_id: string; subscription_item_id: string;
-          old_vendor_id: string; new_vendor_id: string; effective_from: string;
-          idempotency_key: string; created_by: string; created_at?: string;
-        }
-        Update: {
-          id?: string; subscription_id?: string; subscription_item_id?: string;
-          old_vendor_id?: string; new_vendor_id?: string; effective_from?: string;
-          idempotency_key?: string; created_by?: string; created_at?: string;
-        }
-        Relationships: []
-      }
-      subscription_lifecycle_events: {
-        Row: {
-          id: string; subscription_id: string; actor_id: string | null;
-          event_type: string; effective_date: string | null; metadata: Json; created_at: string;
-        }
-        Insert: {
-          id?: string; subscription_id: string; actor_id?: string | null;
-          event_type: string; effective_date?: string | null; metadata?: Json; created_at?: string;
-        }
-        Update: {
-          id?: string; subscription_id?: string; actor_id?: string | null;
-          event_type?: string; effective_date?: string | null; metadata?: Json; created_at?: string;
-        }
-        Relationships: []
-      }
       subscriptions: {
         Row: {
           address_snapshot: Json | null
           auto_renew: boolean
           cancelled_at: string | null
-          delivery_generation_last_date: string | null
+          cod_activated_at: string | null
           created_at: string
           customer_address_id: string
           customer_id: string
+          delivery_generation_last_date: string | null
           delivery_slot_id: string
           delivery_slot_snapshot: Json | null
           discount_paise: number
@@ -1473,10 +1972,11 @@ export type Database = {
           address_snapshot?: Json | null
           auto_renew?: boolean
           cancelled_at?: string | null
-          delivery_generation_last_date?: string | null
+          cod_activated_at?: string | null
           created_at?: string
           customer_address_id: string
           customer_id: string
+          delivery_generation_last_date?: string | null
           delivery_slot_id: string
           delivery_slot_snapshot?: Json | null
           discount_paise?: number
@@ -1500,10 +2000,11 @@ export type Database = {
           address_snapshot?: Json | null
           auto_renew?: boolean
           cancelled_at?: string | null
-          delivery_generation_last_date?: string | null
+          cod_activated_at?: string | null
           created_at?: string
           customer_address_id?: string
           customer_id?: string
+          delivery_generation_last_date?: string | null
           delivery_slot_id?: string
           delivery_slot_snapshot?: Json | null
           discount_paise?: number
@@ -1761,7 +2262,242 @@ export type Database = {
       }
     }
     Functions: {
+      adjust_inventory_stock: {
+        Args: {
+          p_adjustment_type: string
+          p_evidence_reference: string
+          p_idempotency_key: string
+          p_inventory_id: string
+          p_quantity: number
+          p_reason: string
+        }
+        Returns: {
+          adjustment_id: string
+          adjustment_number: string
+          adjustment_type: string
+          available_stock: number
+          inventory_id: string
+          quantity_delta: number
+          reserved_stock: number
+          was_replayed: boolean
+        }[]
+      }
+      assign_cod_order_to_delivery: {
+        Args: { p_delivery_assignment_id: string; p_order_id: string }
+        Returns: {
+          assignment_order_id: string
+          delivery_assignment_id: string
+          order_id: string
+        }[]
+      }
+      assign_subscription_delivery: {
+        Args: { p_delivery_id: string; p_staff_id: string }
+        Returns: {
+          assigned_staff_id: string
+          delivery_id: string
+          delivery_status: Database["public"]["Enums"]["delivery_status_enum"]
+          was_replayed: boolean
+        }[]
+      }
+      audit_inventory_reservations: {
+        Args: never
+        Returns: {
+          audit_type: string
+          detail: string
+          inventory_id: string
+          ledger_reserved_stock: number
+          order_id: string
+          order_status: string
+          product_variant_id: string
+          recorded_reserved_stock: number
+          service_area_id: string
+        }[]
+      }
+      audit_inventory_stock: {
+        Args: never
+        Returns: {
+          audit_type: string
+          detail: string
+          free_stock: number
+          inventory_id: string
+          ledger_available_stock: number
+          ledger_reserved_stock: number
+          product_variant_id: string
+          recorded_available_stock: number
+          recorded_reserved_stock: number
+          safety_stock: number
+          service_area_id: string
+        }[]
+      }
+      cancel_customer_cod_order: {
+        Args: { p_order_id: string }
+        Returns: {
+          order_id: string
+          resulting_status: Database["public"]["Enums"]["order_status_enum"]
+          was_already_cancelled: boolean
+        }[]
+      }
+      cancel_subscription: {
+        Args: { p_reason?: string; p_subscription_id: string }
+        Returns: {
+          subscription_id: string
+          subscription_status: Database["public"]["Enums"]["subscription_status_enum"]
+          was_replayed: boolean
+        }[]
+      }
+      change_subscription_item_vendor: {
+        Args: {
+          p_effective_from: string
+          p_idempotency_key: string
+          p_new_vendor_id: string
+          p_subscription_id: string
+          p_subscription_item_id: string
+        }
+        Returns: {
+          effective_from: string
+          new_vendor_id: string
+          old_vendor_id: string
+          subscription_id: string
+          subscription_item_id: string
+          was_replayed: boolean
+        }[]
+      }
+      complete_subscription_delivery: {
+        Args: { p_delivery_id: string }
+        Returns: {
+          delivery_id: string
+          delivery_status: Database["public"]["Enums"]["delivery_status_enum"]
+          was_replayed: boolean
+        }[]
+      }
+      correct_delivery_cash_handover: {
+        Args: {
+          p_corrected_received_amount_paise: number
+          p_evidence_reference?: string | null
+          p_handover_id: string
+          p_reason: string
+        }
+        Returns: {
+          expected_amount_paise: number
+          handover_id: string
+          handover_status: string
+          received_amount_paise: number
+          was_replayed: boolean
+        }[]
+      }
+      create_cod_order: {
+        Args: {
+          p_address_id: string
+          p_delivery_date: string
+          p_delivery_notes?: string | null
+          p_delivery_slot_id: string
+          p_idempotency_key: string
+        }
+        Returns: {
+          order_id: string
+          order_number: string
+          total_paise: number
+          was_replayed: boolean
+        }[]
+      }
+      create_subscription_payment_intent: {
+        Args: {
+          p_address_id: string
+          p_delivery_slot_id: string
+          p_idempotency_key: string
+          p_items: Json
+          p_plan_type: Database["public"]["Enums"]["subscription_plan_enum"]
+          p_start_date: string
+        }
+        Returns: {
+          amount_paise: number
+          payment_id: string
+          subscription_id: string
+          subscription_number: string
+          subscription_status: Database["public"]["Enums"]["subscription_status_enum"]
+          was_replayed: boolean
+        }[]
+      }
+      fail_subscription_delivery: {
+        Args: { p_delivery_id: string; p_reason: string }
+        Returns: {
+          delivery_id: string
+          delivery_status: Database["public"]["Enums"]["delivery_status_enum"]
+          was_replayed: boolean
+        }[]
+      }
+      generate_subscription_deliveries: {
+        Args: { p_delivery_date: string }
+        Returns: {
+          generated_count: number
+          replayed_count: number
+          skipped_count: number
+        }[]
+      }
+      get_admin_cod_collection: {
+        Args: { p_order_id: string }
+        Returns: {
+          amount_collected_paise: number
+          collected_at: string
+          collected_by_staff_id: string
+          collection_id: string
+          collection_notes: string
+          collection_status: string
+          order_id: string
+          receipt_reference: string
+          rejected_at: string
+          rejected_by_manager_id: string
+          rejection_reason: string
+          verified_at: string
+          verified_by_manager_id: string
+        }[]
+      }
+      get_admin_cod_financial_report: {
+        Args: {
+          p_from_date: string
+          p_service_area_id?: string | null
+          p_staff_id?: string | null
+          p_to_date: string
+        }
+        Returns: {
+          amount_collected_paise: number
+          business_date: string
+          collected_at: string
+          collection_id: string
+          collection_status: string
+          delivery_slot: string
+          handover_expected_paise: number
+          handover_id: string
+          handover_number: string
+          handover_received_paise: number
+          handover_status: string
+          order_id: string
+          order_number: string
+          order_total_paise: number
+          service_area_id: string
+          service_area_name: string
+          staff_id: string
+          staff_name: string
+          variance_paise: number
+        }[]
+      }
       get_auth_uid: { Args: never; Returns: string }
+      get_my_unhanded_cod_collections: {
+        Args: never
+        Returns: {
+          amount_collected_paise: number
+          business_date: string
+          collected_at: string
+          collection_id: string
+          collection_status: string
+          delivery_slot: string
+          delivery_slot_id: string
+          order_id: string
+          order_number: string
+          service_area_id: string
+          service_area_name: string
+        }[]
+      }
       get_user_roles: {
         Args: { lookup_user_id: string }
         Returns: Database["public"]["Enums"]["user_role_enum"][]
@@ -1777,72 +2513,142 @@ export type Database = {
       is_staff: { Args: never; Returns: boolean }
       pause_subscription: {
         Args: { p_subscription_id: string }
-        Returns: { subscription_id: string; subscription_status: Database["public"]["Enums"]["subscription_status_enum"]; was_replayed: boolean }[]
-      }
-      resume_subscription: {
-        Args: { p_subscription_id: string }
-        Returns: { subscription_id: string; subscription_status: Database["public"]["Enums"]["subscription_status_enum"]; new_end_date: string; was_replayed: boolean }[]
-      }
-      skip_subscription_delivery: {
-        Args: { p_subscription_id: string; p_skip_date: string; p_reason?: string | null; p_idempotency_key: string }
-        Returns: { subscription_id: string; skip_date: string; was_replayed: boolean }[]
-      }
-      cancel_subscription: {
-        Args: { p_subscription_id: string; p_reason?: string | null }
-        Returns: { subscription_id: string; subscription_status: Database["public"]["Enums"]["subscription_status_enum"]; was_replayed: boolean }[]
-      }
-      change_subscription_item_vendor: {
-        Args: { p_subscription_id: string; p_subscription_item_id: string; p_new_vendor_id: string; p_effective_from: string; p_idempotency_key: string }
-        Returns: { subscription_id: string; subscription_item_id: string; old_vendor_id: string; new_vendor_id: string; effective_from: string; was_replayed: boolean }[]
-      }
-      quote_subscription: {
-        Args: {
-          p_address_id: string; p_delivery_slot_id: string; p_start_date: string;
-          p_plan_type: Database["public"]["Enums"]["subscription_plan_enum"]; p_items: Json;
-        }
-        Returns: Json
-      }
-      create_subscription_payment_intent: {
-        Args: {
-          p_address_id: string; p_delivery_slot_id: string; p_start_date: string;
-          p_plan_type: Database["public"]["Enums"]["subscription_plan_enum"];
-          p_items: Json; p_idempotency_key: string;
-        }
         Returns: {
-          subscription_id: string; subscription_number: string; payment_id: string;
-          amount_paise: number; subscription_status: Database["public"]["Enums"]["subscription_status_enum"];
-          was_replayed: boolean;
-        }[]
-      }
-      sync_active_cart: { Args: { p_items: Json }; Returns: string }
-      create_cod_order: {
-        Args: {
-          p_address_id: string
-          p_delivery_slot_id: string
-          p_delivery_date: string
-          p_idempotency_key: string
-          p_delivery_notes?: string | null
-        }
-        Returns: {
-          order_id: string
-          order_number: string
-          total_paise: number
+          subscription_id: string
+          subscription_status: Database["public"]["Enums"]["subscription_status_enum"]
           was_replayed: boolean
         }[]
       }
-      cancel_customer_cod_order: {
-        Args: { p_order_id: string }
+      quote_subscription: {
+        Args: {
+          p_address_id: string
+          p_delivery_slot_id: string
+          p_items: Json
+          p_plan_type: Database["public"]["Enums"]["subscription_plan_enum"]
+          p_start_date: string
+        }
+        Returns: Json
+      }
+      receive_inventory_stock: {
+        Args: {
+          p_idempotency_key: string
+          p_items: Json
+          p_notes: string
+          p_service_area_id: string
+          p_vendor_id: string
+          p_vendor_reference: string
+        }
         Returns: {
-          order_id: string
-          resulting_status: Database["public"]["Enums"]["order_status_enum"]
-          was_already_cancelled: boolean
+          receipt_id: string
+          receipt_number: string
+          total_cost_paise: number
+          total_units: number
+          was_replayed: boolean
         }[]
       }
+      record_cod_cash_collection: {
+        Args: {
+          p_amount_collected_paise: number
+          p_collection_notes?: string | null
+          p_order_id: string
+          p_receipt_reference?: string | null
+        }
+        Returns: {
+          amount_collected_paise: number
+          collection_id: string
+          collection_status: string
+          order_id: string
+          was_replayed: boolean
+        }[]
+      }
+      resolve_cod_collection_discrepancy: {
+        Args: {
+          p_corrected_amount_paise: number
+          p_evidence_reference?: string | null
+          p_order_id: string
+          p_reason: string
+        }
+        Returns: {
+          collection_id: string
+          collection_status: string
+          order_id: string
+          payment_status: Database["public"]["Enums"]["payment_status_enum"]
+          was_replayed: boolean
+        }[]
+      }
+      resume_subscription: {
+        Args: { p_subscription_id: string }
+        Returns: {
+          new_end_date: string
+          subscription_id: string
+          subscription_status: Database["public"]["Enums"]["subscription_status_enum"]
+          was_replayed: boolean
+        }[]
+      }
+      review_cod_cash_collection: {
+        Args: { p_decision: string; p_note?: string | null; p_order_id: string }
+        Returns: {
+          collection_id: string
+          collection_status: string
+          order_id: string
+          payment_status: Database["public"]["Enums"]["payment_status_enum"]
+          was_replayed: boolean
+        }[]
+      }
+      review_delivery_cash_handover: {
+        Args: { p_decision: string; p_handover_id: string; p_note?: string | null }
+        Returns: {
+          handover_id: string
+          handover_status: string
+          was_replayed: boolean
+        }[]
+      }
+      set_customer_default_address: {
+        Args: { p_address_id: string }
+        Returns: undefined
+      }
+      skip_subscription_delivery: {
+        Args: {
+          p_idempotency_key: string
+          p_reason: string
+          p_skip_date: string
+          p_subscription_id: string
+        }
+        Returns: {
+          skip_date: string
+          subscription_id: string
+          was_replayed: boolean
+        }[]
+      }
+      start_subscription_delivery: {
+        Args: { p_delivery_id: string }
+        Returns: {
+          delivery_id: string
+          delivery_status: Database["public"]["Enums"]["delivery_status_enum"]
+          was_replayed: boolean
+        }[]
+      }
+      submit_delivery_cash_handover: {
+        Args: {
+          p_collection_ids: string[]
+          p_idempotency_key: string
+          p_received_amount_paise: number
+        }
+        Returns: {
+          expected_amount_paise: number
+          handover_id: string
+          handover_number: string
+          handover_status: string
+          received_amount_paise: number
+          was_replayed: boolean
+        }[]
+      }
+      sync_active_cart: { Args: { p_items: Json }; Returns: string }
       transition_one_time_cod_order: {
         Args: {
-          p_order_id: string
           p_next_status: Database["public"]["Enums"]["order_status_enum"]
           p_note?: string | null
+          p_order_id: string
         }
         Returns: {
           order_id: string
@@ -1851,103 +2657,6 @@ export type Database = {
           was_already_applied: boolean
         }[]
       }
-      generate_subscription_deliveries: {
-        Args: { p_delivery_date: string }
-        Returns: { generated_count: number; skipped_count: number; replayed_count: number }[]
-      }
-      assign_subscription_delivery: {
-        Args: { p_delivery_id: string; p_staff_id: string }
-        Returns: { delivery_id: string; assigned_staff_id: string; delivery_status: Database["public"]["Enums"]["delivery_status_enum"]; was_replayed: boolean }[]
-      }
-      start_subscription_delivery: {
-        Args: { p_delivery_id: string }
-        Returns: { delivery_id: string; delivery_status: Database["public"]["Enums"]["delivery_status_enum"]; was_replayed: boolean }[]
-      }
-      complete_subscription_delivery: {
-        Args: { p_delivery_id: string }
-        Returns: { delivery_id: string; delivery_status: Database["public"]["Enums"]["delivery_status_enum"]; was_replayed: boolean }[]
-      }
-      fail_subscription_delivery: {
-        Args: { p_delivery_id: string; p_reason: string }
-        Returns: { delivery_id: string; delivery_status: Database["public"]["Enums"]["delivery_status_enum"]; was_replayed: boolean }[]
-      }
-      audit_inventory_reservations: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          audit_type: string
-          inventory_id: string
-          order_id: string | null
-          product_variant_id: string
-          service_area_id: string | null
-          recorded_reserved_stock: number
-          ledger_reserved_stock: number
-          order_status: string | null
-          detail: string
-        }[]
-      }
-      review_cod_cash_collection: {
-        Args: { p_order_id: string; p_decision: string; p_note?: string | null }
-        Returns: {
-          collection_id: string
-          order_id: string
-          collection_status: string
-          payment_status: Database["public"]["Enums"]["payment_status_enum"]
-          was_replayed: boolean
-        }[]
-      }
-      get_admin_cod_collection: {
-        Args: { p_order_id: string }
-        Returns: {
-          collection_id: string
-          order_id: string
-          amount_collected_paise: number
-          collection_status: string
-          collected_by_staff_id: string
-          collected_at: string
-          receipt_reference: string | null
-          collection_notes: string | null
-          verified_by_manager_id: string | null
-          verified_at: string | null
-          rejected_by_manager_id: string | null
-          rejected_at: string | null
-          rejection_reason: string | null
-        }[]
-      }
-      resolve_cod_collection_discrepancy: {
-        Args: { p_order_id: string; p_corrected_amount_paise: number; p_reason: string; p_evidence_reference?: string | null }
-        Returns: { collection_id: string; order_id: string; collection_status: string; payment_status: Database["public"]["Enums"]["payment_status_enum"]; was_replayed: boolean }[]
-      }
-      submit_delivery_cash_handover: {
-        Args: { p_collection_ids: string[]; p_received_amount_paise: number; p_idempotency_key: string }
-        Returns: { handover_id: string; handover_number: string; expected_amount_paise: number; received_amount_paise: number; handover_status: string; was_replayed: boolean }[]
-      }
-      review_delivery_cash_handover: {
-        Args: { p_handover_id: string; p_decision: string; p_note?: string | null }
-        Returns: { handover_id: string; handover_status: string; was_replayed: boolean }[]
-      }
-      get_admin_cod_financial_report: {
-        Args: { p_from_date: string; p_to_date: string; p_service_area_id?: string | null; p_staff_id?: string | null }
-        Returns: {
-          order_id: string; order_number: string; business_date: string; service_area_id: string; service_area_name: string;
-          delivery_slot: string; staff_id: string | null; staff_name: string; collection_id: string | null; collection_status: string;
-          amount_collected_paise: number; order_total_paise: number; variance_paise: number; collected_at: string | null;
-          handover_id: string | null; handover_number: string | null; handover_status: string | null;
-          handover_expected_paise: number | null; handover_received_paise: number | null;
-        }[]
-      }
-      correct_delivery_cash_handover: {
-        Args: { p_handover_id: string; p_corrected_received_amount_paise: number; p_reason: string; p_evidence_reference?: string | null }
-        Returns: { handover_id: string; handover_status: string; expected_amount_paise: number; received_amount_paise: number; was_replayed: boolean }[]
-      }
-      get_my_unhanded_cod_collections: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          collection_id: string; order_id: string; order_number: string; business_date: string;
-          service_area_id: string; service_area_name: string; delivery_slot_id: string; delivery_slot: string;
-          amount_collected_paise: number; collection_status: string; collected_at: string;
-        }[]
-      }
-      set_customer_default_address: { Args: { p_address_id: string }; Returns: undefined }
     }
     Enums: {
       delivery_status_enum:
@@ -1986,7 +2695,12 @@ export type Database = {
         | "manage_customers"
         | "view_reports"
       subscription_plan_enum: "7_day" | "30_day" | "custom"
-      subscription_status_enum: "active" | "paused" | "cancelled" | "completed" | "pending_payment"
+      subscription_status_enum:
+        | "active"
+        | "paused"
+        | "cancelled"
+        | "completed"
+        | "pending_payment"
       user_role_enum:
         | "owner"
         | "admin"
@@ -2160,7 +2874,13 @@ export const Constants = {
         "view_reports",
       ],
       subscription_plan_enum: ["7_day", "30_day", "custom"],
-      subscription_status_enum: ["active", "paused", "cancelled", "completed"],
+      subscription_status_enum: [
+        "active",
+        "paused",
+        "cancelled",
+        "completed",
+        "pending_payment",
+      ],
       user_role_enum: [
         "owner",
         "admin",
@@ -2172,8 +2892,7 @@ export const Constants = {
   },
 } as const
 
-
-// Backward-compatible domain aliases used by existing application services.
-export type UserRole = Enums<"user_role_enum">;
-export type StaffPermission = Enums<"staff_permission_enum">;
-export type MilkType = Enums<"milk_type_enum">;
+// Backward-compatible domain aliases used by application services.
+export type UserRole = Database["public"]["Enums"]["user_role_enum"];
+export type StaffPermission = Database["public"]["Enums"]["staff_permission_enum"];
+export type MilkType = Database["public"]["Enums"]["milk_type_enum"];
