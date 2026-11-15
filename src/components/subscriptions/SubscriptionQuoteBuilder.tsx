@@ -36,6 +36,9 @@ export function SubscriptionQuoteBuilder() {
   const [quantity, setQuantity] = useState("1");
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoting, setQuoting] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Array<{ product_variant_id: string; vendor_id: string; milk_type: string; quantity: number; quantity_litres: number }>>([]);
+  const [creating, setCreating] = useState(false);
+  const [createdSubscription, setCreatedSubscription] = useState<{ subscription_number: string; subscription_status: string } | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -82,18 +85,41 @@ export function SubscriptionQuoteBuilder() {
         referenceVariantId = option?.variantId1l || option?.variantId500ml || "";
       }
       if (!addressId || !slotId || !product || !chosenVendorId || !referenceVariantId) throw new Error("Choose an active address, delivery slot, milk and approved vendor.");
+      const items = [{ product_variant_id: referenceVariantId, vendor_id: chosenVendorId, milk_type: isCanteen ? "canteen" : milkType, quantity: Number(quantity), quantity_litres: Number(litres) }];
       const response = await fetch("/api/subscriptions/quote", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           addressId, deliverySlotId: slotId, startDate, planType: plan,
-          items: [{ product_variant_id: referenceVariantId, vendor_id: chosenVendorId, milk_type: isCanteen ? "canteen" : milkType, quantity: Number(quantity), quantity_litres: Number(litres) }],
+          items,
         }),
       });
       const payload = await response.json();
       if (!response.ok || !payload.success) throw new Error(payload.error || "Quote unavailable.");
       setQuote(payload.data.quote as Quote);
+      setSelectedItems(items);
+      setCreatedSubscription(null);
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to calculate quote."); }
     finally { setQuoting(false); }
+  }
+
+  async function createCodSubscription() {
+    if (!quote || !selectedItems.length) return;
+    setCreating(true); setError("");
+    try {
+      const response = await fetch("/api/subscriptions/checkout", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          addressId, deliverySlotId: slotId, startDate, planType: plan,
+          items: selectedItems, idempotencyKey: crypto.randomUUID(),
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.error || "Subscription could not be started.");
+      const result = Array.isArray(payload.data) ? payload.data[0] : payload.data;
+      if (!result || result.subscription_status !== "active") throw new Error("Subscription activation was not confirmed. Please contact support before retrying.");
+      setCreatedSubscription({ subscription_number: result.subscription_number, subscription_status: result.subscription_status });
+    } catch (e) { setError(e instanceof Error ? e.message : "Subscription could not be started."); }
+    finally { setCreating(false); }
   }
 
   if (loading) return <p className="rounded-2xl bg-white p-5 text-sm" role="status">Loading subscription options…</p>;
@@ -136,7 +162,11 @@ export function SubscriptionQuoteBuilder() {
       <p className="text-sm font-semibold text-highlight-ink">Server-calculated quote</p><h2 className="mt-1 text-2xl font-bold">{quote.duration_days}-day milk plan</h2><p className="mt-1 text-sm text-muted-foreground">{quote.start_date} to {quote.end_date}</p>
       <ul className="mt-4 space-y-2">{quote.items.map((item,index) => <li key={index} className="flex justify-between gap-3 border-b border-border py-2 text-sm"><span>{item.product_name_snapshot} · {item.variant_name_snapshot}<span className="block text-xs text-muted-foreground">{item.vendor_name_snapshot}</span></span><strong>{money(item.line_total_paise)}</strong></li>)}</ul>
       <div className="mt-4 space-y-2 text-sm"><div className="flex justify-between"><span>Plan subtotal</span><strong>{money(quote.subtotal_paise)}</strong></div><div className="flex justify-between"><span>Plan discount</span><strong>−{money(quote.discount_paise)}</strong></div><div className="flex justify-between border-t border-border pt-3 text-lg font-bold"><span>Total</span><span>{money(quote.total_paise)}</span></div></div>
-      <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-950">Payment gateway integration is not live yet. This is a quote only: no subscription is created, no payment intent is charged, and no delivery is scheduled.</p>
+      <div className="mt-5 rounded-2xl border border-border bg-[#f8f6fb] p-4">
+        <p className="text-sm font-semibold">Cash on delivery · pay per delivery</p>
+        <p className="mt-1 text-sm text-muted-foreground">No advance payment and no wallet. Your subscription schedules daily deliveries. Pay the delivery agent in cash for each delivery separately.</p>
+        {createdSubscription ? <p role="status" className="mt-3 rounded-xl bg-white p-3 text-sm font-semibold text-green-800">Subscription {createdSubscription.subscription_number} is active. Your first delivery is scheduled for {quote.start_date}. Cash is due separately on each delivery.</p> : <button type="button" onClick={() => void createCodSubscription()} disabled={creating || !selectedItems.length} className="mt-4 min-h-12 w-full rounded-full bg-[#573b75] px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{creating ? "Starting subscription…" : "Start subscription · COD per delivery"}</button>}
+      </div>
     </section> : null}
   </div>;
 }
