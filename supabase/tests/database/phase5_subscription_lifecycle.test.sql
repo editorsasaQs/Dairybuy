@@ -107,5 +107,15 @@ SELECT extensions.ok(
   'active, paused and completed states require a trusted payment verification timestamp for all new writes'
 );
 
+SELECT extensions.ok(
+  position('release_subscription_order_reservation' IN pg_get_functiondef('private.pause_subscription(uuid)'::regprocedure))>0
+  AND position('Subscription paused before dispatch' IN pg_get_functiondef('private.pause_subscription(uuid)'::regprocedure))>0,
+  'pause releases reservations for already-generated unassigned deliveries without counting a customer skip'
+);
+SELECT extensions.ok(
+  position('greatest(1' IN pg_get_functiondef('private.resume_subscription(uuid)'::regprocedure))>0,
+  'same-day pause/resume still shifts the remaining subscription delivery schedule by one day'
+);
+
 SELECT * FROM extensions.finish();
 ROLLBACK;
