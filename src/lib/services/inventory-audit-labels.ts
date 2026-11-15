@@ -27,7 +27,7 @@ export function resolveInventoryAuditLabels<T extends InventoryAuditFindingRef>(
   variants: InventoryAuditVariant[],
   products: InventoryAuditProduct[],
   areas: InventoryAuditArea[],
-): (T & { productLabel: string; productId: string; areaLabel: string | null; areaId: string | null })[] {
+): (T & { productLabel: string; productId: string; catalogProductId: string | null; catalogProductLabel: string; areaLabel: string | null; areaId: string | null })[] {
   const variantById = new Map(variants.map((variant) => [variant.id, variant]));
   const productById = new Map(products.map((product) => [product.id, product.name]));
   const areaById = new Map(areas.map((area) => [area.id, area]));
@@ -46,6 +46,8 @@ export function resolveInventoryAuditLabels<T extends InventoryAuditFindingRef>(
       ...finding,
       productLabel: productLabel || finding.product_variant_id,
       productId: finding.product_variant_id,
+      catalogProductId: variant?.product_id ?? null,
+      catalogProductLabel: productName ?? (variant ? variant.product_id : "Product details unavailable"),
       areaLabel: area ? [area.name, area.city].filter(Boolean).join(" · ") : null,
       areaId: finding.service_area_id,
     };
@@ -77,5 +79,22 @@ export function filterInventoryAuditByArea<T extends { areaId: string | null }>(
 
   return findings.some((finding) => finding.areaId === selectedArea)
     ? findings.filter((finding) => finding.areaId === selectedArea)
+    : findings;
+}
+
+export function filterInventoryAuditByProduct<T extends { catalogProductId: string | null }>(
+  findings: T[],
+  selectedProduct: string | null,
+): T[] {
+  if (!selectedProduct) return findings;
+
+  if (selectedProduct === "unresolved") {
+    return findings.some((finding) => finding.catalogProductId === null)
+      ? findings.filter((finding) => finding.catalogProductId === null)
+      : findings;
+  }
+
+  return findings.some((finding) => finding.catalogProductId === selectedProduct)
+    ? findings.filter((finding) => finding.catalogProductId === selectedProduct)
     : findings;
 }
