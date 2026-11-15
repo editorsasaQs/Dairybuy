@@ -166,6 +166,8 @@ BEGIN
   END IF;
   v_fingerprint:=pg_catalog.md5(pg_catalog.concat_ws('|',p_vendor_id,p_service_area_id::text,
     COALESCE(p_vendor_reference,''),COALESCE(p_notes,''),COALESCE(p_items::text,'')));
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
+    'inventory-receipt:'||v_actor::text||':'||p_idempotency_key::text,0));
 
   SELECT r.* INTO v_existing FROM public.inventory_receipts r
   WHERE r.received_by=v_actor AND r.idempotency_key=p_idempotency_key;
@@ -334,6 +336,8 @@ BEGIN
   v_delta:=CASE WHEN p_adjustment_type IN ('spoilage','damage') THEN -p_quantity ELSE p_quantity END;
   v_fingerprint:=pg_catalog.md5(pg_catalog.concat_ws('|',p_inventory_id::text,p_adjustment_type,
     p_quantity::text,pg_catalog.btrim(p_reason),COALESCE(p_evidence_reference,'')));
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
+    'inventory-adjustment:'||v_actor::text||':'||p_idempotency_key::text,0));
 
   SELECT a.* INTO v_existing FROM public.inventory_stock_adjustments a
   WHERE a.adjusted_by=v_actor AND a.idempotency_key=p_idempotency_key;
