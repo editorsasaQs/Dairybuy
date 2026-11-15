@@ -22,12 +22,12 @@ export type InventoryAuditFindingRef = {
   service_area_id: string | null;
 };
 
-export function resolveInventoryAuditLabels(
-  findings: InventoryAuditFindingRef[],
+export function resolveInventoryAuditLabels<T extends InventoryAuditFindingRef>(
+  findings: T[],
   variants: InventoryAuditVariant[],
   products: InventoryAuditProduct[],
   areas: InventoryAuditArea[],
-) {
+): (T & { productLabel: string; productId: string; areaLabel: string | null; areaId: string | null })[] {
   const variantById = new Map(variants.map((variant) => [variant.id, variant]));
   const productById = new Map(products.map((product) => [product.id, product.name]));
   const areaById = new Map(areas.map((area) => [area.id, area]));
