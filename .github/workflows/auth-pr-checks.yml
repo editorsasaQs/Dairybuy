@@ -1,5 +1,9 @@
 name: Auth PR checks
 
+concurrency:
+  group: dairybuy-auth-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -165,7 +169,7 @@ jobs:
     # Supabase local stacks use fixed host ports; serialize this job after
     # database-rbac so both jobs cannot bind 54322/54321 concurrently.
     needs: database-rbac
-    if: ${{ !cancelled() && github.actor != 'github-actions[bot]' }}
+    if: ${{ success() && github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
