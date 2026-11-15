@@ -63,6 +63,8 @@ jobs:
           src/lib/bag.ts
           src/lib/services/auth-service.ts
           src/lib/services/order-address-snapshot.ts
+          src/lib/services/inventory-audit-labels.ts
+          src/lib/services/inventory-audit-labels.test.ts
           src/lib/services/order-address-snapshot.test.ts
           src/lib/services/__tests__/auth-and-security.test.ts
           src/lib/services/database-cart-service.ts
