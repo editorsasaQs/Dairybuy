@@ -74,10 +74,10 @@ SELECT extensions.ok(
   'only authenticated users can call the discrepancy wrapper and private implementation remains closed'
 );
 SELECT extensions.ok(
-  has_function_privilege('authenticated','public.submit_delivery_cash_handover(uuid[],integer,uuid)','EXECUTE')
+  NOT has_function_privilege('authenticated','public.submit_delivery_cash_handover(uuid[],integer,uuid)','EXECUTE')
   AND NOT has_function_privilege('anon','public.submit_delivery_cash_handover(uuid[],integer,uuid)','EXECUTE')
   AND NOT has_function_privilege('authenticated','private.submit_delivery_cash_handover(uuid[],integer,uuid)','EXECUTE'),
-  'only authenticated users can invoke staff handover wrapper'
+  'staff cash handover submission is not exposed in the no-agent launch boundary'
 );
 SELECT extensions.ok(
   has_function_privilege('authenticated','public.review_delivery_cash_handover(uuid,text,text)','EXECUTE')
