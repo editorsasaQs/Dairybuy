@@ -83,8 +83,9 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
   return (
     <main className="db-page py-(--section-y)">
       <Container className="max-w-4xl">
+        <a href="#order-content" className="sr-only rounded-lg bg-white px-4 py-2 font-semibold focus:not-sr-only focus:absolute focus:z-20">Skip to order details</a>
         <Link href="/admin/orders" className="text-sm font-semibold text-highlight-ink underline">← Back to order queue</Link>
-        <div className="mt-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-start sm:gap-4">
+        <div id="order-content" className="mt-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-start sm:gap-4">
           <div><p className="text-sm font-semibold text-highlight-ink">Dairybuy operations</p><h1 className="mt-2 break-words text-2xl font-bold sm:text-3xl">{order.order_number}</h1><p className="mt-2 text-sm text-muted-foreground">Placed {formatTimestamp(order.created_at)} · Updated {formatTimestamp(order.updated_at)}</p></div>
           <span className="rounded-full bg-[#e7f6fc] px-4 py-2 text-sm font-bold capitalize">{order.status.replaceAll("_", " ")}</span>
         </div>
@@ -125,9 +126,9 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
             <Link href="/admin/inventory/audit?type=order_ledger" className="text-sm font-semibold text-highlight-ink underline">Open full inventory audit</Link>
           </div>
           {auditResult.error ? (
-            <p role="status" className="mt-4 rounded-xl border border-[#f1d9a8] bg-[#fff8e7] p-3 text-sm text-muted-foreground">Order-specific audit context is temporarily unavailable. The order itself loaded successfully; no inventory values were changed.</p>
+            <p role="status" aria-live="polite" className="mt-4 rounded-xl border border-[#f1d9a8] bg-[#fff8e7] p-3 text-sm text-muted-foreground">Order-specific audit context is temporarily unavailable. The order itself loaded successfully; no inventory values were changed.</p>
           ) : orderAuditDisplayRows.length === 0 ? (
-            <p className="mt-4 rounded-xl bg-[#f3f7f8] p-3 text-sm text-muted-foreground">No order-specific reservation ledger anomalies are currently reported by the read-only audit.</p>
+            <p role="status" aria-live="polite" className="mt-4 rounded-xl bg-[#f3f7f8] p-3 text-sm text-muted-foreground">No order-specific reservation ledger anomalies are currently reported by the read-only audit.</p>
           ) : (
             <>
               <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
