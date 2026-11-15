@@ -38,6 +38,7 @@ export function SubscriptionQuoteBuilder() {
   const [quoting, setQuoting] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Array<{ product_variant_id: string; vendor_id: string; milk_type: string; quantity: number; quantity_litres: number }>>([]);
   const [creating, setCreating] = useState(false);
+  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
   const [createdSubscription, setCreatedSubscription] = useState<{ subscription_number: string; subscription_status: string } | null>(null);
 
   useEffect(() => {
@@ -98,6 +99,7 @@ export function SubscriptionQuoteBuilder() {
       setQuote(payload.data.quote as Quote);
       setSelectedItems(items);
       setCreatedSubscription(null);
+      setIdempotencyKey(null);
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to calculate quote."); }
     finally { setQuoting(false); }
   }
@@ -105,12 +107,14 @@ export function SubscriptionQuoteBuilder() {
   async function createCodSubscription() {
     if (!quote || !selectedItems.length) return;
     setCreating(true); setError("");
+    const requestKey = idempotencyKey || crypto.randomUUID();
+    setIdempotencyKey(requestKey);
     try {
       const response = await fetch("/api/subscriptions/checkout", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           addressId, deliverySlotId: slotId, startDate, planType: plan,
-          items: selectedItems, idempotencyKey: crypto.randomUUID(),
+          items: selectedItems, idempotencyKey: requestKey,
         }),
       });
       const payload = await response.json();
