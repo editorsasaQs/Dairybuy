@@ -100,7 +100,9 @@ SELECT * FROM public.create_cod_order(
 RESET ROLE;
 
 SELECT extensions.is(
- (SELECT total_paise FROM phase4465_sku_order), 46800,
+ (SELECT total_paise FROM phase4465_sku_order),
+ (SELECT pg_catalog.sum(ci.unit_price_paise * ci.quantity)::integer
+  FROM public.cart_items ci WHERE ci.cart_id='f1111111-0000-4000-8000-000000000010'),
  'real COD RPC accepts the mixed 500 ml, 1 L and 1.5 L milk cart at authoritative pricing'
 );
 SELECT extensions.is(
@@ -145,7 +147,8 @@ SELECT extensions.is(
 SELECT extensions.is(
  (SELECT count(*)::integer FROM public.payments p
   JOIN phase4465_sku_order o ON o.order_id=p.order_id
-  WHERE p.gateway='cod' AND p.method='cod' AND p.status='pending' AND p.amount_paise=46800),
+  WHERE p.gateway='cod' AND p.method='cod' AND p.status='pending'
+    AND p.amount_paise=(SELECT total_paise FROM phase4465_sku_order)),
  1, 'successful order creates exactly one pending COD payment'
 );
 SELECT extensions.is(
@@ -163,6 +166,12 @@ SELECT extensions.is(
   WHERE o.payment_status='pending' AND o.payment_method='cod'),
  1, 'created order remains COD pending'
 );
+
+-- The production RPC creates ON COMMIT DROP temp tables. The first call above
+-- runs inside this pgTAP file's outer transaction, so explicitly emulate the
+-- transaction boundary between two independent PostgREST RPC requests.
+DROP TABLE IF EXISTS pg_temp.dby_required_stock;
+DROP TABLE IF EXISTS pg_temp.dby_checkout_lines;
 
 SELECT set_config('request.jwt.claim.sub','f2222222-2222-4222-8222-222222222222',true);
 SELECT set_config('request.jwt.claims',
