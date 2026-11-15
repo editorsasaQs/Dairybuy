@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Container } from "@/components/brand/Container";
 import { isAdminOrOwner } from "@/lib/services/auth-service";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { resolveInventoryAuditLabels, type InventoryAuditArea, type InventoryAuditProduct, type InventoryAuditVariant } from "@/lib/services/inventory-audit-labels";
+import { filterInventoryAuditFindings, resolveInventoryAuditLabels, type InventoryAuditArea, type InventoryAuditProduct, type InventoryAuditVariant } from "@/lib/services/inventory-audit-labels";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -12,7 +12,9 @@ function formatStock(value: number) {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(value);
 }
 
-export default async function AdminInventoryAuditPage() {
+export default async function AdminInventoryAuditPage({ searchParams }: { searchParams: Promise<{ type?: string | string[] }> }) {
+  const query = await searchParams;
+  const requestedType = Array.isArray(query.type) ? query.type[0] : query.type;
   const supabase = await createSupabaseServerClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect("/login?next=/admin/inventory/audit");
@@ -40,6 +42,14 @@ export default async function AdminInventoryAuditPage() {
   const areas = (areaResult.data ?? []) as InventoryAuditArea[];
   const labelsAvailable = !variantResult.error && !productResult.error && !areaResult.error;
   const displayRows = resolveInventoryAuditLabels(rows, variants, products, areas);
+  const availableTypes = [...new Set(rows.map((row) => row.audit_type))].sort();
+  const selectedType = requestedType && availableTypes.includes(requestedType) ? requestedType : null;
+  const filteredRows = filterInventoryAuditFindings(displayRows, selectedType);
+  const typeLabel = (type: string) => type === "inventory_balance"
+    ? "Inventory balance"
+    : type === "order_reservation"
+      ? "Order reservation"
+      : type.replaceAll("_", " ");
 
   return (
     <main className="db-page py-(--section-y)">
@@ -71,12 +81,29 @@ export default async function AdminInventoryAuditPage() {
           <>
             <section className="mb-5 rounded-3xl border-2 border-white bg-white p-5 shadow-sm">
               <p className="text-sm text-muted-foreground">Findings requiring review</p>
-              <p className="mt-1 text-3xl font-bold tabular-nums">{formatStock(rows.length)}</p>
+              <p className="mt-1 text-3xl font-bold tabular-nums">{formatStock(filteredRows.length)} <span className="text-sm font-medium text-muted-foreground">of {formatStock(rows.length)}</span></p>
               <p className="mt-2 text-xs text-muted-foreground">Read-only report. This page never repairs or adjusts stock automatically.</p>
             </section>
             {!labelsAvailable ? <p role="status" className="mb-4 rounded-2xl border border-[#f1d9a8] bg-[#fff8e7] p-4 text-sm text-muted-foreground">Some catalogue details could not be resolved. Stable product and area IDs remain visible below; no inventory values were changed.</p> : null}
+            <nav aria-label="Filter inventory audit by discrepancy type" className="mb-4 flex flex-wrap gap-2">
+              <Link href="/admin/inventory/audit" aria-current={selectedType ? undefined : "page"} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedType ? "border-[#dce5e8] bg-white text-muted-foreground" : "border-[#172f38] bg-[#172f38] text-white"}`}>
+                All types ({rows.length})
+              </Link>
+              {availableTypes.map((type) => (
+                <Link key={type} href={`/admin/inventory/audit?type=${encodeURIComponent(type)}`} aria-current={selectedType === type ? "page" : undefined} className={`rounded-full border px-4 py-2 text-sm font-semibold capitalize ${selectedType === type ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
+                  {typeLabel(type)} ({rows.filter((row) => row.audit_type === type).length})
+                </Link>
+              ))}
+            </nav>
+            {filteredRows.length === 0 ? (
+              <section className="rounded-3xl border-2 border-white bg-white p-8 text-center shadow-sm">
+                <h2 className="font-bold">No findings for this discrepancy type</h2>
+                <p className="mt-2 text-sm text-muted-foreground">Choose another filter or view all audit findings.</p>
+                <Link href="/admin/inventory/audit" className="mt-3 inline-block font-semibold text-highlight-ink underline">Clear filter</Link>
+              </section>
+            ) : (
             <div className="grid gap-3">
-              {displayRows.map((row, index) => (
+              {filteredRows.map((row, index) => (
                 <article key={`${row.audit_type}-${row.inventory_id}-${row.order_id ?? index}`} className="rounded-3xl border-2 border-white bg-white p-5 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -95,6 +122,7 @@ export default async function AdminInventoryAuditPage() {
                 </article>
               ))}
             </div>
+            ) }
           </>
         )}
 

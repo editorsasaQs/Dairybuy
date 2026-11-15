@@ -51,3 +51,14 @@ export function resolveInventoryAuditLabels<T extends InventoryAuditFindingRef>(
     };
   });
 }
+
+export function filterInventoryAuditFindings<T extends { audit_type: string }>(
+  findings: T[],
+  selectedType: string | null,
+): T[] {
+  if (!selectedType || !findings.some((finding) => finding.audit_type === selectedType)) {
+    return findings;
+  }
+
+  return findings.filter((finding) => finding.audit_type === selectedType);
+}

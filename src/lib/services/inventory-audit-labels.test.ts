@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveInventoryAuditLabels } from "./inventory-audit-labels";
+import { filterInventoryAuditFindings, resolveInventoryAuditLabels } from "./inventory-audit-labels";
 
 const finding = {
   product_variant_id: "cow-milk-500",
@@ -39,5 +39,28 @@ describe("resolveInventoryAuditLabels", () => {
     );
     expect(resolved?.productLabel).toBe("Cow Milk · Standard · 500 ml");
     expect(resolved?.areaLabel).toBe("Topsia");
+  });
+});
+
+describe("filterInventoryAuditFindings", () => {
+  const findings = [
+    { audit_type: "inventory_balance", inventory_id: "inventory-1" },
+    { audit_type: "order_reservation", inventory_id: "inventory-2" },
+    { audit_type: "order_reservation", inventory_id: "inventory-3" },
+  ];
+
+  it("filters to the selected discrepancy type", () => {
+    expect(filterInventoryAuditFindings(findings, "order_reservation")).toEqual([
+      findings[1],
+      findings[2],
+    ]);
+  });
+
+  it("returns all findings for the all-types selection", () => {
+    expect(filterInventoryAuditFindings(findings, null)).toEqual(findings);
+  });
+
+  it("fails open to all findings for an unknown URL filter", () => {
+    expect(filterInventoryAuditFindings(findings, "unknown_type")).toEqual(findings);
   });
 });
