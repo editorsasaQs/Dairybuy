@@ -62,3 +62,20 @@ export function filterInventoryAuditFindings<T extends { audit_type: string }>(
 
   return findings.filter((finding) => finding.audit_type === selectedType);
 }
+
+export function filterInventoryAuditByArea<T extends { areaId: string | null }>(
+  findings: T[],
+  selectedArea: string | null,
+): T[] {
+  if (!selectedArea) return findings;
+
+  if (selectedArea === "unassigned") {
+    return findings.some((finding) => finding.areaId === null)
+      ? findings.filter((finding) => finding.areaId === null)
+      : findings;
+  }
+
+  return findings.some((finding) => finding.areaId === selectedArea)
+    ? findings.filter((finding) => finding.areaId === selectedArea)
+    : findings;
+}

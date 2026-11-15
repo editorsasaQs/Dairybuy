@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Container } from "@/components/brand/Container";
 import { isAdminOrOwner } from "@/lib/services/auth-service";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { filterInventoryAuditFindings, resolveInventoryAuditLabels, type InventoryAuditArea, type InventoryAuditProduct, type InventoryAuditVariant } from "@/lib/services/inventory-audit-labels";
+import { filterInventoryAuditByArea, filterInventoryAuditFindings, resolveInventoryAuditLabels, type InventoryAuditArea, type InventoryAuditProduct, type InventoryAuditVariant } from "@/lib/services/inventory-audit-labels";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -12,9 +12,10 @@ function formatStock(value: number) {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(value);
 }
 
-export default async function AdminInventoryAuditPage({ searchParams }: { searchParams: Promise<{ type?: string | string[] }> }) {
+export default async function AdminInventoryAuditPage({ searchParams }: { searchParams: Promise<{ type?: string | string[]; area?: string | string[] }> }) {
   const query = await searchParams;
   const requestedType = Array.isArray(query.type) ? query.type[0] : query.type;
+  const requestedArea = Array.isArray(query.area) ? query.area[0] : query.area;
   const supabase = await createSupabaseServerClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect("/login?next=/admin/inventory/audit");
@@ -44,7 +45,20 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
   const displayRows = resolveInventoryAuditLabels(rows, variants, products, areas);
   const availableTypes = [...new Set(rows.map((row) => row.audit_type))].sort();
   const selectedType = requestedType && availableTypes.includes(requestedType) ? requestedType : null;
-  const filteredRows = filterInventoryAuditFindings(displayRows, selectedType);
+  const typeFilteredRows = filterInventoryAuditFindings(displayRows, selectedType);
+  const availableAreas = [...new Map(displayRows.flatMap((row) => row.areaId && row.areaLabel ? [[row.areaId, row.areaLabel] as const] : [])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1]));
+  const hasUnassignedArea = displayRows.some((row) => row.areaId === null);
+  const validAreaValues = new Set([...availableAreas.map(([id]) => id), ...(hasUnassignedArea ? ["unassigned"] : [])]);
+  const selectedArea = requestedArea && validAreaValues.has(requestedArea) ? requestedArea : null;
+  const filteredRows = filterInventoryAuditByArea(typeFilteredRows, selectedArea);
+  const auditHref = (type: string | null, area: string | null) => {
+    const params = new URLSearchParams();
+    if (type) params.set("type", type);
+    if (area) params.set("area", area);
+    const queryString = params.toString();
+    return queryString ? `/admin/inventory/audit?${queryString}` : "/admin/inventory/audit";
+  };
   const typeLabel = (type: string) => type === "inventory_balance"
     ? "Inventory balance"
     : type === "order_reservation"
@@ -86,20 +100,35 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
             </section>
             {!labelsAvailable ? <p role="status" className="mb-4 rounded-2xl border border-[#f1d9a8] bg-[#fff8e7] p-4 text-sm text-muted-foreground">Some catalogue details could not be resolved. Stable product and area IDs remain visible below; no inventory values were changed.</p> : null}
             <nav aria-label="Filter inventory audit by discrepancy type" className="mb-4 flex flex-wrap gap-2">
-              <Link href="/admin/inventory/audit" aria-current={selectedType ? undefined : "page"} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedType ? "border-[#dce5e8] bg-white text-muted-foreground" : "border-[#172f38] bg-[#172f38] text-white"}`}>
+              <Link href={auditHref(null, selectedArea)} aria-current={selectedType ? undefined : "page"} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedType ? "border-[#dce5e8] bg-white text-muted-foreground" : "border-[#172f38] bg-[#172f38] text-white"}`}>
                 All types ({rows.length})
               </Link>
               {availableTypes.map((type) => (
-                <Link key={type} href={`/admin/inventory/audit?type=${encodeURIComponent(type)}`} aria-current={selectedType === type ? "page" : undefined} className={`rounded-full border px-4 py-2 text-sm font-semibold capitalize ${selectedType === type ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
+                <Link key={type} href={auditHref(type, selectedArea)} aria-current={selectedType === type ? "page" : undefined} className={`rounded-full border px-4 py-2 text-sm font-semibold capitalize ${selectedType === type ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
                   {typeLabel(type)} ({rows.filter((row) => row.audit_type === type).length})
                 </Link>
               ))}
+            </nav>
+            <nav aria-label="Filter inventory audit by service area" className="mb-4 flex flex-wrap gap-2">
+              <Link href={auditHref(selectedType, null)} aria-current={selectedArea ? undefined : "page"} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedArea ? "border-[#dce5e8] bg-white text-muted-foreground" : "border-[#172f38] bg-[#172f38] text-white"}`}>
+                All areas ({typeFilteredRows.length})
+              </Link>
+              {availableAreas.map(([id, label]) => (
+                <Link key={id} href={auditHref(selectedType, id)} aria-current={selectedArea === id ? "page" : undefined} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedArea === id ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
+                  {label} ({typeFilteredRows.filter((row) => row.areaId === id).length})
+                </Link>
+              ))}
+              {hasUnassignedArea ? (
+                <Link href={auditHref(selectedType, "unassigned")} aria-current={selectedArea === "unassigned" ? "page" : undefined} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedArea === "unassigned" ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
+                  Unassigned ({typeFilteredRows.filter((row) => row.areaId === null).length})
+                </Link>
+              ) : null}
             </nav>
             {filteredRows.length === 0 ? (
               <section className="rounded-3xl border-2 border-white bg-white p-8 text-center shadow-sm">
                 <h2 className="font-bold">No findings for this discrepancy type</h2>
                 <p className="mt-2 text-sm text-muted-foreground">Choose another filter or view all audit findings.</p>
-                <Link href="/admin/inventory/audit" className="mt-3 inline-block font-semibold text-highlight-ink underline">Clear filter</Link>
+                <Link href={auditHref(null, null)} className="mt-3 inline-block font-semibold text-highlight-ink underline">Clear filters</Link>
               </section>
             ) : (
             <div className="grid gap-3">
