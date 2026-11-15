@@ -257,7 +257,7 @@ BEGIN
       'product_variant_id',v_variant.id,'vendor_id',v_vendor.id,'milk_type',v_line.milk_type,
       'quantity',v_line.quantity,'quantity_litres',v_line.quantity_litres,
       'price_per_delivery_paise',v_price,'line_total_paise',v_line_total,
-      'product_name_snapshot',v_product.name,'variant_name_snapshot',v_variant.name,
+      'product_name_snapshot',v_product.name,'variant_name_snapshot',v_variant.variant_name,
       'vendor_name_snapshot',v_vendor.name
     ));
   END LOOP;
