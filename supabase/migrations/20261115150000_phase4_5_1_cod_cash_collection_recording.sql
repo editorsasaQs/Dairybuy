@@ -162,7 +162,9 @@ BEGIN
   IF FOUND THEN
     IF v_existing.idempotency_key = p_idempotency_key
        AND v_existing.collected_by_staff_id = v_actor
-       AND v_existing.delivery_assignment_id IS NOT DISTINCT FROM p_delivery_assignment_id THEN
+       AND v_existing.amount_collected_paise = p_amount_collected_paise
+       AND v_existing.delivery_assignment_id IS NOT DISTINCT FROM p_delivery_assignment_id
+       AND v_existing.collection_note IS NOT DISTINCT FROM v_note THEN
       RETURN QUERY SELECT v_existing.id, v_existing.order_id,
         v_existing.amount_collected_paise, v_order.total_paise, true;
       RETURN;
@@ -276,7 +278,7 @@ RETURNS TABLE(
 )
 LANGUAGE sql
 VOLATILE
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = ''
 AS $wrapper$
   SELECT * FROM private.record_cod_cash_collection(
