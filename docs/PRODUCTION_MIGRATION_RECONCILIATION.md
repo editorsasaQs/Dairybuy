@@ -11,9 +11,9 @@ Status: planning and validation in progress. No SQL has been applied to Dairybuy
 
 ## Baseline findings
 
-The 34-table Phase 4 baseline and seed are the schema/data foundation. The development migration ledger confirms that the corrected-review SQL was recorded for the baseline, seed, and RLS migrations. However, the current repository baseline file is not byte-identical to the recorded baseline: it adds `public.rls_auto_enable()` and an event trigger, while the SQL stored in the development migration ledger does not contain either object.
+The 34-table Phase 4 baseline and seed are the schema/data foundation. During reconciliation, the original repository baseline was found to include `public.rls_auto_enable()` and an event trigger that were not part of the SQL recorded in the development migration ledger. The branch now restores the baseline byte-for-byte from that ledger and moves the helper into its own ordered bootstrap migration.
 
-That bootstrap helper exists in the development database outside the recorded migration history and is referenced by later security hardening. A clean production install therefore needs an explicit, ordered bootstrap migration before the migration that alters/revokes that helper. It must not be silently embedded into an already-recorded historical migration.
+The helper exists in Dairybuy-dev outside its recorded migration history and is referenced by later security hardening. A clean production install therefore needs the explicit bootstrap migration before the migration that alters/revokes that helper; it must not be silently embedded into an already-recorded historical migration.
 
 The seed migration also sets delivery windows to 08:00–11:00 and 17:00–21:00. The approved Dairybuy operating windows are 09:00–12:00 and 16:00–19:00. A forward production migration must correct these values and preserve the 07:00/16:00 order cutoffs and 07:30/16:30 cancellation cutoffs.
 
@@ -58,7 +58,7 @@ The reconciliation branch now restores the exact stored SQL for all 28 applied d
 
 ## Unapplied repository migrations after the development ledger
 
-The current main branch contains these ten later migrations, in order:
+The reconciliation branch retains these ten later migrations, in order:
 
 1. 20261115100000 — Phase 4.4.6.4 milk SKU inventory reservation
 2. 20261115130000 — Phase 4.4.6.5 inventory reservation reconciliation
