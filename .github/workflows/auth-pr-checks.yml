@@ -124,6 +124,9 @@ jobs:
       - name: Run Phase 4.4.2 inventory lock-order pgTAP regression
         run: supabase test db supabase/tests/database/phase4_4_2_inventory_lock_order.test.sql
 
+      - name: Run Phase 4.4.6.5 real milk SKU reservation regression
+        run: supabase test db supabase/tests/database/phase4_4_6_5_milk_sku_runtime.test.sql
+
       - name: Run Phase 4.4.4 cancellation RPC security regression
         run: supabase test db supabase/tests/database/phase4_4_4_order_cancellation.test.sql
 
@@ -150,7 +153,10 @@ jobs:
         run: supabase stop --no-backup
 
   auth-e2e:
-    if: github.actor != 'github-actions[bot]'
+    # Supabase local stacks use fixed host ports; serialize this job after
+    # database-rbac so both jobs cannot bind 54322/54321 concurrently.
+    needs: database-rbac
+    if: ${{ !cancelled() && github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
