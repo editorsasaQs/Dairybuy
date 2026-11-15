@@ -140,6 +140,19 @@ jobs:
           echo "::error::Supabase stack failed to start after three attempts."
           exit 1
 
+      - name: Export the configured local database URL for concurrency tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source <(supabase status -o env)
+          set +a
+          if [[ "${DB_URL:-}" != postgresql://*127.0.0.1:* && "${DB_URL:-}" != postgresql://*localhost:* ]]; then
+            echo "::error::Refusing non-loopback local database URL: ${DB_URL:-<missing>}"
+            exit 1
+          fi
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
+
       - name: Run RBAC pgTAP regression test against local database
         run: supabase test db supabase/tests/database/rbac_customer_admin_boundary.test.sql
 
