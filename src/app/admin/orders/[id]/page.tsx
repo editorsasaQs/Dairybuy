@@ -8,6 +8,18 @@ import { OrderStatusActions } from "./OrderStatusActions";
 import { parseOrderDeliveryAddressSnapshot } from "@/lib/services/order-address-snapshot";
 import { getInventoryAuditSeverity, resolveInventoryAuditLabels, summarizeInventoryAuditSeverity, type InventoryAuditArea, type InventoryAuditProduct, type InventoryAuditVariant } from "@/lib/services/inventory-audit-labels";
 
+type OrderAuditFinding = {
+  audit_type: string;
+  inventory_id: string;
+  order_id: string | null;
+  product_variant_id: string;
+  service_area_id: string | null;
+  recorded_reserved_stock: number;
+  ledger_reserved_stock: number;
+  order_status: string | null;
+  detail: string;
+};
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -38,10 +50,10 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
     .maybeSingle();
   if (error || !order) notFound();
 
-  const [itemsResult, slotResult, areaResult, historyResult] = await Promise.all([
+  const [itemsResult, slotResult, areaResult, historyResult, auditResult] = await Promise.all([
     supabase.from("order_items").select("id,product_name_snapshot,variant_name_snapshot,brand_snapshot,pack_size_snapshot,vendor_name_snapshot,quantity,quantity_litres,unit_price_paise,total_price_paise").eq("order_id", order.id).order("id"),
     supabase.from("delivery_slots").select("label,start_time,end_time").eq("id", order.delivery_slot_id).maybeSingle(),
-    supabase.from("service_areas").select("name,city,state").eq("id", order.service_area_id).maybeSingle(),
+    supabase.from("service_areas").select("id,name,city,state").eq("id", order.service_area_id).maybeSingle(),
     supabase.from("order_status_history").select("from_status,to_status,changed_by,note,created_at").eq("order_id", order.id).order("created_at", { ascending: true }),
     supabase.rpc("audit_inventory_reservations"),
   ]);
@@ -49,7 +61,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
     throw new Error("Unable to load order details.");
   }
 
-  const orderAuditRows = (auditResult.data ?? []).filter((finding) => finding.order_id === order.id);
+  const orderAuditRows = ((auditResult.data ?? []) as unknown as OrderAuditFinding[]).filter((finding) => finding.order_id === order.id);
   const auditVariantIds = [...new Set(orderAuditRows.map((finding) => finding.product_variant_id))];
   const auditVariantsResult = auditVariantIds.length
     ? await supabase.from("product_variants").select("id,product_id,variant_name,pack_size,brand").in("id", auditVariantIds)
@@ -61,7 +73,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
     : null;
   const auditProducts = (auditProductsResult?.data ?? []) as InventoryAuditProduct[];
   const auditLabelsAvailable = !auditVariantIds.length || (!auditVariantsResult?.error && (!auditProductIds.length || !auditProductsResult?.error));
-  const orderAuditDisplayRows = resolveInventoryAuditLabels(orderAuditRows, auditVariants, auditProducts, areaResult.data ? [areaResult.data as InventoryAuditArea] : []);
+  const orderAuditDisplayRows = resolveInventoryAuditLabels(orderAuditRows, auditVariants, auditProducts, areaResult.data ? [areaResult.data] : []);
   const orderAuditSummary = summarizeInventoryAuditSeverity(orderAuditDisplayRows);
 
   const address = parseOrderDeliveryAddressSnapshot(order.delivery_address_snapshot);
