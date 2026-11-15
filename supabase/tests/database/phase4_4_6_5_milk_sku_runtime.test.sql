@@ -1,7 +1,7 @@
 -- Phase 4.4.6.5 Stage A: execute the real COD order RPC against milk SKU fixtures.
 -- All synthetic users, orders, movements and stock changes are rolled back.
 BEGIN;
-SELECT extensions.plan(13);
+SELECT extensions.plan(14);
 
 INSERT INTO auth.users
   (id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data)
@@ -53,7 +53,16 @@ VALUES
  -- Second customer requests one additional 500 ml pack after the first order consumes all available stock.
  ('f2222222-0000-4000-8000-000000000010','milk-cow-500ml','healthy-haryana','cow',1,4200,0.5);
 
-CREATE TEMP TABLE phase4465_sku_order AS
+CREATE TEMP TABLE phase4465_sku_order (
+  order_id uuid, order_number varchar, total_paise integer, was_replayed boolean
+);
+GRANT INSERT, SELECT ON phase4465_sku_order TO authenticated;
+
+SELECT set_config('request.jwt.claim.sub','f1111111-1111-4111-8111-111111111111',true);
+SELECT set_config('request.jwt.claims',
+ '{"sub":"f1111111-1111-4111-8111-111111111111","role":"authenticated"}',true);
+SET LOCAL ROLE authenticated;
+INSERT INTO phase4465_sku_order
 SELECT * FROM public.create_cod_order(
  'f1111111-0000-4000-8000-000000000001'::uuid,
  '00000000-0000-0000-0000-000000000011'::uuid,
@@ -61,6 +70,7 @@ SELECT * FROM public.create_cod_order(
  'f1111111-0000-4000-8000-000000000020'::uuid,
  NULL
 );
+RESET ROLE;
 
 SELECT extensions.is(
  (SELECT total_paise FROM phase4465_sku_order), 46800,
