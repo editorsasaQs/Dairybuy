@@ -149,7 +149,7 @@ jobs:
         run: |
           set -euo pipefail
           set -a
-          source <(supabase status -o env)
+          source <(supabase status --env --output-format text)
           set +a
           if [[ "${DB_URL:-}" != postgresql://*127.0.0.1:* && "${DB_URL:-}" != postgresql://*localhost:* ]]; then
             echo "::error::Refusing non-loopback local database URL: ${DB_URL:-<missing>}"
@@ -198,8 +198,8 @@ jobs:
         run: supabase stop --no-backup
 
   auth-e2e:
-    # Run after database-rbac to serialize local stacks. This job uses
-    # dedicated DB, shadow DB and SMTP ports to avoid runner port collisions.
+    # Run after database-rbac to serialize local stacks. Experimental stack
+    # mode allocates collision-free local service ports for this job.
     needs: database-rbac
     if: ${{ success() && github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
@@ -254,7 +254,7 @@ jobs:
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY_VALUE"
             echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000"
             echo "PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000"
-            echo "MAILPIT_API_URL=http://127.0.0.1:54324"
+            echo "MAILPIT_API_URL=${MAILPIT_URL}"
             echo "DATABASE_URL=$DB_URL"
           } >> "$GITHUB_ENV"
 
