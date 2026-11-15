@@ -1,4 +1,4 @@
--- Phase 5.4 paid-only delivery generation, reservation and fulfilment security contract.
+-- Phase 5.4–5.6 subscription delivery generation, reservation and COD fulfilment security contract.
 BEGIN;
 SELECT extensions.plan(23);
 
