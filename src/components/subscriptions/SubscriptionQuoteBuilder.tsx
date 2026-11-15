@@ -74,6 +74,13 @@ export function SubscriptionQuoteBuilder() {
     ? (canteen?.orderable ? canteen.id : "")
     : (vendorOptions.some((row) => row.id === vendorId) ? vendorId : vendorOptions[0]?.id || "");
 
+  function invalidateQuote() {
+    setQuote(null);
+    setSelectedItems([]);
+    setCreatedSubscription(null);
+    setIdempotencyKey(null);
+  }
+
   async function getQuote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setQuote(null); setQuoting(true);
     try {
@@ -132,33 +139,33 @@ export function SubscriptionQuoteBuilder() {
     {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}
     <form onSubmit={getQuote} className="grid gap-4 rounded-3xl border-2 border-white bg-white p-5 shadow-sm sm:grid-cols-2 sm:p-7">
       <label className="grid gap-1 text-sm font-semibold sm:col-span-2">Delivery address
-        <select required value={addressId} onChange={(e) => setAddressId(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="">Choose address</option>{addresses.map((a) => <option key={a.id} value={a.id}>{a.address_type} · {a.recipient_name} · {a.address_line1} · {a.pincode}</option>)}</select>
+        <select required value={addressId} onChange={(e) => { setAddressId(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="">Choose address</option>{addresses.map((a) => <option key={a.id} value={a.id}>{a.address_type} · {a.recipient_name} · {a.address_line1} · {a.pincode}</option>)}</select>
       </label>
       <label className="grid gap-1 text-sm font-semibold">Delivery slot
-        <select required value={slotId} onChange={(e) => setSlotId(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="">Choose slot</option>{slots.map((s) => <option key={s.id} value={s.id}>{s.label} · {s.start_time.slice(0,5)}–{s.end_time.slice(0,5)}</option>)}</select>
+        <select required value={slotId} onChange={(e) => { setSlotId(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="">Choose slot</option>{slots.map((s) => <option key={s.id} value={s.id}>{s.label} · {s.start_time.slice(0,5)}–{s.end_time.slice(0,5)}</option>)}</select>
       </label>
       <label className="grid gap-1 text-sm font-semibold">First delivery date
-        <input required type="date" min={startDate} value={startDate} onChange={(e) => setStartDate(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal" />
+        <input required type="date" min={startDate} value={startDate} onChange={(e) => { setStartDate(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal" />
       </label>
       <label className="grid gap-1 text-sm font-semibold">Plan
-        <select value={plan} onChange={(e) => setPlan(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="7_day">7 days · no discount</option><option value="30_day">30 days · ₹60 basket discount</option></select>
+        <select value={plan} onChange={(e) => { setPlan(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="7_day">7 days · no discount</option><option value="30_day">30 days · ₹60 basket discount</option></select>
       </label>
       <label className="grid gap-1 text-sm font-semibold">Milk
-        <select value={productId} onChange={(e) => { setProductId(e.target.value); setQuote(null); }} className="min-h-12 rounded-xl border border-border px-3 font-normal">{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+        <select value={productId} onChange={(e) => { setProductId(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal">{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
       </label>
       {!isCanteen ? <label className="grid gap-1 text-sm font-semibold">Milk type
-        <select value={milkType} onChange={(e) => setMilkType(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="cow">Cow milk</option><option value="buffalo">Buffalo milk</option></select>
+        <select value={milkType} onChange={(e) => { setMilkType(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="cow">Cow milk</option><option value="buffalo">Buffalo milk</option></select>
       </label> : null}
       <label className="grid gap-1 text-sm font-semibold">{isCanteen ? "Canteen supplier" : "Milk vendor"}
-        <select required disabled={!!isCanteen} value={effectiveVendorId} onChange={(e) => setVendorId(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal">
+        <select required disabled={!!isCanteen} value={effectiveVendorId} onChange={(e) => { setVendorId(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal">
           {isCanteen ? <option value={canteen?.id || ""}>{canteen?.name || "Canteen Milk Centre"}</option> : vendorOptions.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
         </select>
       </label>
       <label className="grid gap-1 text-sm font-semibold">Litres per day
-        <select value={litres} onChange={(e) => setLitres(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal">{Array.from({length:20},(_,i)=>(i+1)*0.5).map((n) => <option key={n} value={n}>{n < 1 ? "500 ml" : n + " L"}</option>)}</select>
+        <select value={litres} onChange={(e) => { setLitres(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal">{Array.from({length:20},(_,i)=>(i+1)*0.5).map((n) => <option key={n} value={n}>{n < 1 ? "500 ml" : n + " L"}</option>)}</select>
       </label>
       <label className="grid gap-1 text-sm font-semibold">Quantity per day
-        <input type="number" min="1" max="100" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal" />
+        <input type="number" min="1" max="100" step="1" value={quantity} onChange={(e) => { setQuantity(e.target.value); invalidateQuote(); }} className="min-h-12 rounded-xl border border-border px-3 font-normal" />
       </label>
       <button type="submit" disabled={quoting || !addresses.length || !slots.length || !products.length} className="min-h-12 rounded-full bg-[#573b75] px-5 py-3 text-sm font-bold text-white disabled:opacity-50 sm:col-span-2">{quoting ? "Calculating…" : "Calculate subscription quote"}</button>
     </form>
