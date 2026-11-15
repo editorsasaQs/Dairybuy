@@ -38,9 +38,6 @@ export function SubscriptionQuoteBuilder() {
   const [quoting, setQuoting] = useState(false);
 
   useEffect(() => {
-    const tomorrow = new Date(Date.now() + 86400000);
-    const date = new Date(tomorrow.getTime() - tomorrow.getTimezoneOffset() * 60000).toISOString().slice(0,10);
-    setStartDate(date);
     void (async () => {
       try {
         const responses = await Promise.all([
@@ -68,14 +65,10 @@ export function SubscriptionQuoteBuilder() {
 
   const product = products.find((row) => row.id === productId);
   const isCanteen = product?.productType === "canteen_milk";
-  const selectedVendor = isCanteen ? canteen : vendors.find((row) => row.id === vendorId);
   const vendorOptions = useMemo(() => vendors.filter((row) => row.orderingEnabled && row.verifiedOptions.some((option) => option.type === milkType)), [vendors, milkType]);
-
-  useEffect(() => {
-    if (isCanteen) {
-      if (canteen?.orderable) setVendorId(canteen.id);
-    } else if (!vendorOptions.some((row) => row.id === vendorId)) setVendorId(vendorOptions[0]?.id || "");
-  }, [isCanteen, canteen, vendorOptions, vendorId]);
+  const effectiveVendorId = isCanteen
+    ? (canteen?.orderable ? canteen.id : "")
+    : (vendorOptions.some((row) => row.id === vendorId) ? vendorId : vendorOptions[0]?.id || "");
 
   async function getQuote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setQuote(null); setQuoting(true);
