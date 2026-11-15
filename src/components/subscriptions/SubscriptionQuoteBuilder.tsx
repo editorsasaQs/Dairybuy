@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 
 type Address = { id: string; address_type: string; recipient_name: string; address_line1: string; pincode: string; is_default: boolean };
 type Slot = { id: string; label: string; start_time: string; end_time: string };
@@ -73,7 +74,7 @@ export function SubscriptionQuoteBuilder() {
     } else if (!vendorOptions.some((row) => row.id === vendorId)) setVendorId(vendorOptions[0]?.id || "");
   }, [isCanteen, canteen, vendorOptions, vendorId]);
 
-  async function getQuote(event: React.FormEvent<HTMLFormElement>) {
+  async function getQuote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setQuote(null); setQuoting(true);
     try {
       const chosenVendorId = isCanteen ? canteen?.id : vendorId;
