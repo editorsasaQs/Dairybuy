@@ -136,7 +136,7 @@ jobs:
               exit 0
             fi
             echo "Supabase startup failed; cleaning partial containers before retry."
-            supabase stop --no-backup || true
+            supabase stop || true
             if [[ "${attempt}" -lt 3 ]]; then
               sleep $((attempt * 20))
             fi
@@ -195,7 +195,7 @@ jobs:
 
       - name: Stop disposable local Supabase stack
         if: always()
-        run: supabase stop --no-backup
+        run: supabase stop
 
   auth-e2e:
     # Run after database-rbac to serialize local stacks. Experimental stack
@@ -343,4 +343,4 @@ jobs:
 
       - name: Stop disposable local Supabase stack
         if: always()
-        run: supabase stop --no-backup
+        run: supabase stop
