@@ -24,6 +24,7 @@ GRANT SELECT ON TABLE
   public.subscription_vendor_changes
 TO authenticated;
 
+-- Webhook payloads and processing state are never client-readable.
 GRANT ALL PRIVILEGES ON TABLE public.payment_webhook_events TO service_role;
 
 COMMIT;
