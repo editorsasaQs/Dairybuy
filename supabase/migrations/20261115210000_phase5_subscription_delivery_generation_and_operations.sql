@@ -210,6 +210,18 @@ BEGIN
     ORDER BY s.id
     FOR UPDATE OF s SKIP LOCKED
   LOOP
+    SELECT COALESCE(SUM(si.price_per_delivery_paise::bigint*si.quantity),0)
+      INTO v_subtotal
+    FROM public.subscription_items si WHERE si.subscription_id=v_sub.id;
+    IF v_subtotal<=0 OR v_subtotal>2147483647 THEN
+      RAISE EXCEPTION 'Subscription daily total is invalid for %',v_sub.id USING ERRCODE='23514';
+    END IF;
+    v_discount:=CASE WHEN v_sub.plan_type='30_day' THEN 200 ELSE 0 END;
+    IF v_discount>v_subtotal THEN
+      RAISE EXCEPTION 'Daily subscription discount exceeds daily subtotal' USING ERRCODE='23514';
+    END IF;
+    v_total:=v_subtotal-v_discount;
+
     IF EXISTS (SELECT 1 FROM public.subscription_skip_records sr
       WHERE sr.subscription_id=v_sub.id AND sr.skip_date=p_delivery_date) THEN
       INSERT INTO public.subscription_deliveries(
@@ -258,18 +270,6 @@ BEGIN
       v_replayed:=v_replayed+1;
       CONTINUE;
     END IF;
-
-    SELECT COALESCE(SUM(si.price_per_delivery_paise::bigint*si.quantity),0)
-      INTO v_subtotal
-    FROM public.subscription_items si WHERE si.subscription_id=v_sub.id;
-    IF v_subtotal<=0 OR v_subtotal>2147483647 THEN
-      RAISE EXCEPTION 'Subscription daily total is invalid for %',v_sub.id USING ERRCODE='23514';
-    END IF;
-    v_discount:=CASE WHEN v_sub.plan_type='30_day' THEN 200 ELSE 0 END;
-    IF v_discount>v_subtotal THEN
-      RAISE EXCEPTION 'Daily subscription discount exceeds daily subtotal' USING ERRCODE='23514';
-    END IF;
-    v_total:=v_subtotal-v_discount;
 
     INSERT INTO public.orders(
       customer_id,customer_address_id,service_area_id,delivery_slot_id,order_type,status,
