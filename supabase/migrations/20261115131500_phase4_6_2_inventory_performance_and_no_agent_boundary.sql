@@ -66,32 +66,143 @@ CREATE POLICY subscription_lifecycle_events_read
     )
   );
 
--- COD cash is recorded by owner/admin. The physical delivery agent has no
--- product interface and cannot submit cash collections or handover batches.
-DO $patch$
+-- COD cash is recorded by owner/admin only. Replace the concrete function
+-- definition instead of brittle pg_get_functiondef text substitutions. The
+-- previous patch expected a subscription_deliveries query that never existed
+-- in the Phase 4.5.1 function, causing fresh database migration to abort.
+CREATE OR REPLACE FUNCTION private.record_cod_cash_collection(
+  p_order_id uuid,
+  p_amount_collected_paise integer,
+  p_receipt_reference text DEFAULT NULL,
+  p_collection_notes text DEFAULT NULL
+)
+RETURNS TABLE(
+  collection_id uuid,
+  order_id uuid,
+  amount_collected_paise integer,
+  collection_status text,
+  was_replayed boolean
+)
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
 DECLARE
-  v_def text;
-  v_next text;
-  v_assignment_block text;
+  v_actor uuid := auth.uid();
+  v_order public.orders%ROWTYPE;
+  v_payment public.payments%ROWTYPE;
+  v_existing public.cod_collections%ROWTYPE;
+  v_collection_id uuid;
+  v_status text;
+  v_receipt text;
+  v_notes text;
 BEGIN
-  v_def:=pg_catalog.pg_get_functiondef(
+  IF v_actor IS NULL OR NOT private.is_admin_or_owner() THEN
+    RAISE EXCEPTION 'Only owner/admin can record COD cash'
+      USING ERRCODE='42501';
+  END IF;
+  IF p_order_id IS NULL OR p_amount_collected_paise IS NULL
+     OR p_amount_collected_paise<=0 THEN
+    RAISE EXCEPTION 'Order and positive collected amount are required' USING ERRCODE='22023';
+  END IF;
+  IF p_receipt_reference IS NOT NULL AND length(p_receipt_reference)>120 THEN
+    RAISE EXCEPTION 'Receipt reference must be 120 characters or fewer' USING ERRCODE='22023';
+  END IF;
+  IF p_collection_notes IS NOT NULL AND length(p_collection_notes)>500 THEN
+    RAISE EXCEPTION 'Collection notes must be 500 characters or fewer' USING ERRCODE='22023';
+  END IF;
+  v_receipt:=NULLIF(pg_catalog.btrim(p_receipt_reference),'');
+  v_notes:=NULLIF(pg_catalog.btrim(p_collection_notes),'');
+
+  SELECT o.* INTO v_order
+  FROM public.orders o
+  WHERE o.id=p_order_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Order not found' USING ERRCODE='P0002';
+  END IF;
+
+  -- Same actor + same amount retry is an idempotent replay. Any changed
+  -- amount/actor must go through an owner/admin discrepancy workflow later.
+  SELECT c.* INTO v_existing
+  FROM public.cod_collections c
+  WHERE c.order_id=p_order_id;
+  IF FOUND THEN
+    IF v_existing.collected_by_staff_id=v_actor
+       AND v_existing.amount_collected_paise=p_amount_collected_paise THEN
+      RETURN QUERY SELECT v_existing.id,v_existing.order_id,
+        v_existing.amount_collected_paise,v_existing.status,true;
+      RETURN;
+    END IF;
+    RAISE EXCEPTION 'A COD collection record already exists for this order'
+      USING ERRCODE='23505';
+  END IF;
+
+  IF v_order.order_type<>'one_time' OR v_order.payment_method<>'cod' THEN
+    RAISE EXCEPTION 'Only one-time COD orders accept cash collection records'
+      USING ERRCODE='23514';
+  END IF;
+  IF v_order.status<>'delivered' THEN
+    RAISE EXCEPTION 'COD cash can be recorded only after delivery is confirmed'
+      USING ERRCODE='23514';
+  END IF;
+
+  SELECT p.* INTO v_payment
+  FROM public.payments p
+  WHERE p.order_id=p_order_id
+  FOR UPDATE;
+  IF NOT FOUND OR v_payment.gateway<>'cod' OR v_payment.status<>'pending'
+     OR v_payment.amount_paise<>v_order.total_paise THEN
+    RAISE EXCEPTION 'Pending COD payment does not match the order total'
+      USING ERRCODE='23514';
+  END IF;
+
+  v_status:=CASE
+    WHEN p_amount_collected_paise=v_order.total_paise THEN 'collected'
+    ELSE 'disputed'
+  END;
+
+  INSERT INTO public.cod_collections(
+    order_id,collected_by_staff_id,amount_collected_paise,
+    collected_at,status,receipt_reference,collection_notes
+  ) VALUES (
+    p_order_id,v_actor,p_amount_collected_paise,pg_catalog.now(),
+    v_status,v_receipt,v_notes
+  ) RETURNING id INTO v_collection_id;
+
+  INSERT INTO public.audit_logs(user_id,action,table_name,record_id,old_values,new_values)
+  VALUES (
+    v_actor,'cod_collection.recorded','cod_collections',v_collection_id::text,NULL,
+    pg_catalog.jsonb_build_object(
+      'order_id',p_order_id,
+      'amount_collected_paise',p_amount_collected_paise,
+      'order_total_paise',v_order.total_paise,
+      'status',v_status,
+      'receipt_reference',v_receipt
+    )
+  );
+
+  -- Deliberately do not mark the payment captured. Owner/admin verification
+  -- remains a separate audited action.
+  RETURN QUERY SELECT v_collection_id,p_order_id,
+    p_amount_collected_paise,v_status,false;
+END;
+$function$;
+
+DO $assertion$
+DECLARE
+  v_def text := pg_catalog.pg_get_functiondef(
     'private.record_cod_cash_collection(uuid,integer,text,text)'::regprocedure
   );
-  v_assignment_block:=E'  SELECT EXISTS (\n    SELECT 1 FROM public.delivery_assignment_orders dao\n    JOIN public.delivery_assignments da ON da.id=dao.delivery_assignment_id\n    WHERE dao.order_id=p_order_id AND da.staff_id=v_actor\n      AND da.status IN (''assigned'',''in_progress'',''completed'')\n  ) OR EXISTS (\n    SELECT 1 FROM public.subscription_deliveries sd\n    WHERE sd.order_id=p_order_id AND sd.assigned_staff_id=v_actor\n      AND sd.status=''delivered''\n  ) INTO v_assignment_authorized;\n\n  IF NOT private.is_admin_or_owner() AND NOT v_assignment_authorized THEN\n    RAISE EXCEPTION ''Only the assigned delivery staff or owner/admin can record this collection''\n      USING ERRCODE=''42501'';\n  END IF;';
-  v_next:=pg_catalog.replace(v_def,
-    E'  IF v_actor IS NULL THEN\n    RAISE EXCEPTION ''Authentication required'' USING ERRCODE=''42501'';\n  END IF;',
-    E'  IF v_actor IS NULL OR NOT private.is_admin_or_owner() THEN\n    RAISE EXCEPTION ''Only owner/admin can record COD cash'' USING ERRCODE=''42501'';\n  END IF;');
-  v_next:=pg_catalog.replace(v_next,v_assignment_block,'');
-  v_next:=pg_catalog.replace(v_next,'  v_assignment_authorized boolean := false;\n','');
-  IF v_next=v_def
-     OR pg_catalog.strpos(v_next,'v_assignment_authorized')>0
-     OR pg_catalog.strpos(v_next,'Only the assigned delivery staff')>0
-     OR pg_catalog.strpos(v_next,'IF v_actor IS NULL OR NOT private.is_admin_or_owner()')=0 THEN
-    RAISE EXCEPTION 'COD collection owner/admin authorization patch did not match expected function source';
+BEGIN
+  IF pg_catalog.strpos(v_def,'IF v_actor IS NULL OR NOT private.is_admin_or_owner()')=0
+     OR pg_catalog.strpos(v_def,'v_assignment_authorized')>0
+     OR pg_catalog.strpos(v_def,'Only the assigned delivery staff')>0 THEN
+    RAISE EXCEPTION 'COD collection function did not reach the owner/admin-only authorization boundary';
   END IF;
-  EXECUTE v_next;
 END;
-$patch$;
+$assertion$;
 
 -- No staff assignment or staff cash-handover RPC is exposed to authenticated users.
 REVOKE ALL ON FUNCTION public.assign_cod_order_to_delivery(uuid,uuid)
