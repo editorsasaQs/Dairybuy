@@ -35,7 +35,6 @@ export function SubscriptionDashboard() {
   const [message, setMessage] = useState("");
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const [response, vendorResponse] = await Promise.all([
         fetch("/api/subscriptions", { cache: "no-store" }),
