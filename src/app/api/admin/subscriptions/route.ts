@@ -25,11 +25,13 @@ export async function POST(request: Request) {
     let args: Record<string, string>;
     switch (input["action"]) {
       case "assign":
+        if (!admin) return NextResponse.json({ success: false, error: "Only owner/admin can assign deliveries." }, { status: 403, headers });
         if (typeof input["staffId"] !== "string" || !uuidPattern.test(input["staffId"])) return NextResponse.json({ success: false, error: "Choose a valid delivery staff account." }, { status: 400, headers });
         rpc = "assign_subscription_delivery"; args = { p_delivery_id: input["deliveryId"], p_staff_id: input["staffId"] }; break;
       case "start": rpc = "start_subscription_delivery"; args = { p_delivery_id: input["deliveryId"] }; break;
       case "complete": rpc = "complete_subscription_delivery"; args = { p_delivery_id: input["deliveryId"] }; break;
       case "fail":
+        if (!admin) return NextResponse.json({ success: false, error: "Only owner/admin can resolve failed deliveries." }, { status: 403, headers });
         if (typeof input["reason"] !== "string" || !input["reason"].trim() || input["reason"].length > 500) return NextResponse.json({ success: false, error: "A failure reason of 1–500 characters is required." }, { status: 400, headers });
         rpc = "fail_subscription_delivery"; args = { p_delivery_id: input["deliveryId"], p_reason: input["reason"].trim() }; break;
       default: return NextResponse.json({ success: false, error: "Unsupported delivery action." }, { status: 400, headers });
