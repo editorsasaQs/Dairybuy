@@ -193,6 +193,12 @@ jobs:
       - name: Run Phase 4.5.3 COD discrepancy, handover and financial report regression
         run: supabase test db supabase/tests/database/phase4_5_3_cod_reconciliation_financial_reports.test.sql
 
+      - name: Run Phase 5 subscription quote and pending-payment regression
+        run: supabase test db supabase/tests/database/phase5_subscription_quote_and_intent.test.sql
+
+      - name: Run Phase 5 subscription lifecycle regression
+        run: supabase test db supabase/tests/database/phase5_subscription_lifecycle.test.sql
+
       - name: Run inventory reservation concurrency regression
         run: bash supabase/tests/concurrency/inventory-reservation-concurrency.sh
 
