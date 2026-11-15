@@ -1,0 +1,43 @@
+import { describe, expect, it } from "vitest";
+import { resolveInventoryAuditLabels } from "./inventory-audit-labels";
+
+const finding = {
+  product_variant_id: "cow-milk-500",
+  service_area_id: "area-topsia",
+};
+
+describe("resolveInventoryAuditLabels", () => {
+  it("resolves product, variant, pack size, brand and service area names", () => {
+    expect(resolveInventoryAuditLabels(
+      [finding],
+      [{ id: "cow-milk-500", product_id: "cow-milk", variant_name: "Standard", pack_size: "500 ml", brand: "Dairybuy" }],
+      [{ id: "cow-milk", name: "Cow Milk" }],
+      [{ id: "area-topsia", name: "Topsia", city: "Kolkata" }],
+    )).toEqual([{
+      ...finding,
+      productLabel: "Cow Milk · Standard · 500 ml · Dairybuy",
+      productId: "cow-milk-500",
+      areaLabel: "Topsia · Kolkata",
+      areaId: "area-topsia",
+    }]);
+  });
+
+  it("keeps the stable variant ID visible when a product lookup is missing", () => {
+    const [resolved] = resolveInventoryAuditLabels([finding], [], [], []);
+    expect(resolved?.productLabel).toBe("cow-milk-500");
+    expect(resolved?.productId).toBe("cow-milk-500");
+    expect(resolved?.areaLabel).toBeNull();
+    expect(resolved?.areaId).toBe("area-topsia");
+  });
+
+  it("supports variants without a brand and areas without a city", () => {
+    const [resolved] = resolveInventoryAuditLabels(
+      [finding],
+      [{ id: "cow-milk-500", product_id: "cow-milk", variant_name: "Standard", pack_size: "500 ml", brand: null }],
+      [{ id: "cow-milk", name: "Cow Milk" }],
+      [{ id: "area-topsia", name: "Topsia", city: "" }],
+    );
+    expect(resolved?.productLabel).toBe("Cow Milk · Standard · 500 ml");
+    expect(resolved?.areaLabel).toBe("Topsia");
+  });
+});
