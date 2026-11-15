@@ -4,7 +4,7 @@ import { createSupabaseServerClient, isServerSupabaseConfigured } from "@/lib/su
 const headers = { "Cache-Control": "no-store" };
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-const actions = new Set(["pause", "resume", "skip", "cancel", "change_vendor"]);
+const actions = new Set(["pause", "resume", "skip", "cancel", "change_vendor", "confirm_delivery"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -50,6 +50,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "A valid subscription action and ID are required." }, { status: 400, headers });
     }
     const id = body["subscriptionId"];
+    if (body["action"] === "confirm_delivery") {
+      if (typeof body["deliveryId"] !== "string" || !uuidPattern.test(body["deliveryId"])) {
+        return NextResponse.json({ success: false, error: "A valid delivery ID is required." }, { status: 400, headers });
+      }
+      const { data, error } = await supabase.rpc("complete_subscription_delivery" as never, {
+        p_delivery_id: body["deliveryId"],
+      } as never);
+      if (error) {
+        const expected = ["22023", "23514", "42501", "P0002"].includes(error.code ?? "");
+        return NextResponse.json({ success: false, error: expected ? error.message : "Delivery receipt could not be confirmed." }, { status: expected ? 422 : 503, headers });
+      }
+      return NextResponse.json({ success: true, data }, { headers });
+    }
     let rpcName: string;
     let args: Record<string, string | null>;
     switch (body["action"]) {
