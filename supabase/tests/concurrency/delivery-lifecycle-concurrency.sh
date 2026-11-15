@@ -213,14 +213,13 @@ BEGIN
    WHERE order_id='$ORDER_CANCEL_RACE'::uuid AND to_status='out_for_delivery';
 
   IF race_status='cancelled' THEN
-    IF cancel_result_placeholder THEN NULL; END IF;
-    IF race_reserved<>1 OR race_available<>1 OR release_count<>1
+    IF race_reserved<>0 OR race_available<>1 OR release_count<>1
        OR cancelled_history_count<>1 OR out_for_delivery_history_count<>0 THEN
       RAISE EXCEPTION 'Cancellation won but ledger/state inconsistent: reserved %, available %, releases %, cancelled history %, out_for_delivery history %',
         race_reserved,race_available,release_count,cancelled_history_count,out_for_delivery_history_count;
     END IF;
   ELSIF race_status='out_for_delivery' THEN
-    IF race_reserved<>2 OR race_available<>1 OR release_count<>0
+    IF race_reserved<>1 OR race_available<>1 OR release_count<>0
        OR cancelled_history_count<>0 OR out_for_delivery_history_count<>1 THEN
       RAISE EXCEPTION 'Delivery dispatch won but ledger/state inconsistent: reserved %, available %, releases %, cancelled history %, out_for_delivery history %',
         race_reserved,race_available,release_count,cancelled_history_count,out_for_delivery_history_count;
