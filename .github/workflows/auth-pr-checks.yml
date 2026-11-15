@@ -81,6 +81,7 @@ jobs:
           src/app/account/page.tsx
           src/app/orders/[id]/page.tsx
           src/app/admin/orders/page.tsx
+          src/app/admin/inventory/audit/page.tsx
           src/app/admin/orders/[id]/page.tsx
           src/lib/supabase/types.ts
           src/components/layout/SiteHeader.tsx

@@ -73,14 +73,24 @@ test.describe('Dairybuy Supabase authentication browser flows', () => {
     await expect(page.getByText('customer', { exact: true })).toBeVisible();
   });
 
-  test('admin order queue requires authentication and rejects customer accounts', async ({ page, request }) => {
+  test('admin order and inventory audit routes require authentication and reject customer accounts', async ({ page, request }) => {
     await page.goto('/admin/orders');
     await expect(page).toHaveURL((url) =>
       url.origin === appOrigin && url.pathname === '/login' && url.searchParams.get('next') === '/admin/orders',
     );
 
+    await page.goto('/admin/inventory/audit');
+    await expect(page).toHaveURL((url) =>
+      url.origin === appOrigin && url.pathname === '/login' && url.searchParams.get('next') === '/admin/inventory/audit',
+    );
+
     await signupAndConfirm(page, request);
+    await expect(page.getByRole('link', { name: 'Inventory audit' })).toHaveCount(0);
+
     await page.goto('/admin/orders');
+    await expectAccountRoute(page);
+
+    await page.goto('/admin/inventory/audit');
     await expectAccountRoute(page);
 
     await page.goto('/admin/orders/a5555555-0000-4000-8000-000000000002');
