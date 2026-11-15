@@ -306,7 +306,7 @@ BEGIN
   SELECT h.* INTO v_handover FROM public.delivery_cash_handovers h
     WHERE h.id=p_handover_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Handover not found' USING ERRCODE='P0002'; END IF;
-  IF v_handover.status=CASE WHEN p_decision='accept' THEN 'accepted' ELSE 'disputed' END THEN
+  IF v_handover.status = (CASE WHEN p_decision='accept' THEN 'accepted' ELSE 'disputed' END) THEN
     RETURN QUERY SELECT v_handover.id,v_handover.status,true; RETURN;
   END IF;
   IF v_handover.status<>'submitted' THEN
