@@ -16,10 +16,11 @@ async function currentUser() {
 
 export async function resolveCodDiscrepancyAction(formData: FormData) {
   const orderId = String(formData.get("orderId") ?? "");
-  const amount = Number(formData.get("correctedAmountPaise"));
+  const amountRupees = Number(formData.get("correctedAmountRupees"));
+  const amount = Math.round(amountRupees * 100);
   const reason = String(formData.get("reason") ?? "").trim();
   const evidence = String(formData.get("evidenceReference") ?? "").trim();
-  if (!UUID.test(orderId) || !Number.isSafeInteger(amount) || amount <= 0 || reason.length < 5 || reason.length > 500 || evidence.length > 200) {
+  if (!UUID.test(orderId) || !Number.isFinite(amountRupees) || !Number.isSafeInteger(amount) || amount <= 0 || reason.length < 5 || reason.length > 500 || evidence.length > 200) {
     throw new Error("Enter a valid corrected cash amount, reason and evidence reference.");
   }
   const { supabase, user, admin } = await currentUser();
@@ -51,10 +52,11 @@ export async function reviewCashHandoverAction(formData: FormData) {
 
 export async function correctCashHandoverAction(formData: FormData) {
   const handoverId = String(formData.get("handoverId") ?? "");
-  const amount = Number(formData.get("correctedReceivedPaise"));
+  const amountRupees = Number(formData.get("correctedReceivedRupees"));
+  const amount = Math.round(amountRupees * 100);
   const reason = String(formData.get("reason") ?? "").trim();
   const evidence = String(formData.get("evidenceReference") ?? "").trim();
-  if (!UUID.test(handoverId) || !Number.isSafeInteger(amount) || amount <= 0 || reason.length < 5 || reason.length > 500 || evidence.length > 200) {
+  if (!UUID.test(handoverId) || !Number.isFinite(amountRupees) || !Number.isSafeInteger(amount) || amount <= 0 || reason.length < 5 || reason.length > 500 || evidence.length > 200) {
     throw new Error("Enter a valid recounted amount, reason and evidence reference.");
   }
   const { supabase, user, admin } = await currentUser();
