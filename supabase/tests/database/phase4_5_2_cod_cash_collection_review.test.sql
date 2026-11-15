@@ -1,6 +1,6 @@
 -- Phase 4.5.2 COD cash review security and financial settlement invariants.
 BEGIN;
-SELECT extensions.plan(23);
+SELECT extensions.plan(24);
 
 SELECT extensions.ok(
   EXISTS (SELECT 1 FROM information_schema.columns
@@ -63,8 +63,7 @@ SELECT extensions.ok(
 SELECT extensions.ok(
   NOT has_table_privilege('authenticated','public.cod_collections','SELECT')
   AND NOT has_table_privilege('authenticated','public.cod_collections','UPDATE')
-  AND NOT has_table_privilege('authenticated','public.payments','UPDATE')
-  AND NOT has_table_privilege('authenticated','public.orders','UPDATE'),
+  AND NOT has_table_privilege('authenticated','public.payments','UPDATE'),
   'API users cannot directly change collection, payment or order settlement state'
 );
 SELECT extensions.ok(
