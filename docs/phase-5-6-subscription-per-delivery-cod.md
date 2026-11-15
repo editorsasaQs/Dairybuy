@@ -15,7 +15,7 @@ Dairybuy subscriptions use per-delivery COD. The plan total is an operational sc
 
 ## Database implementation
 
-Migration: `20261115230000_phase5_6_subscription_per_delivery_cod.sql`
+Migration: `20261115131358_phase5_6_subscription_per_delivery_cod.sql`
 
 It forward-patches the previously introduced online-only subscription checkout and generator using guarded source transformations. The migration aborts if the expected source fragments are not present. It:
 1. permits COD on the subscription-level plan marker while retaining online-method validation for any separately scoped online subscription record;
