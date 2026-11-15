@@ -189,8 +189,8 @@ BEGIN
     E'  JOIN public.delivery_assignment_orders dao ON dao.order_id=o.id\n  JOIN public.delivery_assignments da ON da.id=dao.delivery_assignment_id',
     E'  LEFT JOIN public.delivery_assignment_orders dao ON dao.order_id=o.id\n  LEFT JOIN public.delivery_assignments da ON da.id=dao.delivery_assignment_id');
   v_next:=pg_catalog.replace(v_next,
-    E'    AND da.service_area_id=o.service_area_id AND o.status=''delivered''\n    AND o.order_type=''one_time'' AND o.payment_method=''cod''',
-    E'    AND (o.order_type=''subscription'' OR da.service_area_id=o.service_area_id) AND o.status=''delivered''\n    AND o.order_type IN (''one_time'',''subscription'') AND o.payment_method=''cod''\n    AND ((o.order_type=''subscription'' AND EXISTS (SELECT 1 FROM public.subscription_deliveries sd WHERE sd.order_id=o.id AND sd.assigned_staff_id=auth.uid() AND sd.status=''delivered'')) OR (o.order_type=''one_time'' AND dao.order_id IS NOT NULL AND da.staff_id=auth.uid()))');
+    E'    AND da.delivery_date=o.delivery_date AND da.delivery_slot_id=o.delivery_slot_id\n    AND da.service_area_id=o.service_area_id AND o.status=''delivered''\n    AND o.order_type=''one_time'' AND o.payment_method=''cod''',
+    E'    AND o.status=''delivered'' AND o.order_type IN (''one_time'',''subscription'') AND o.payment_method=''cod''\n    AND ((o.order_type=''subscription'' AND EXISTS (SELECT 1 FROM public.subscription_deliveries sd WHERE sd.order_id=o.id AND sd.assigned_staff_id=auth.uid() AND sd.status=''delivered'')) OR (o.order_type=''one_time'' AND dao.order_id IS NOT NULL AND da.staff_id=auth.uid() AND da.delivery_date=o.delivery_date AND da.delivery_slot_id=o.delivery_slot_id AND da.service_area_id=o.service_area_id))');
   IF v_next=v_def OR pg_catalog.strpos(v_next, 'subscription_deliveries sd')=0 THEN
     RAISE EXCEPTION 'Staff COD handover queue patch did not match the expected source';
   END IF;
