@@ -199,7 +199,7 @@ BEGIN
   IF v_actor IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
   IF p_collection_ids IS NULL OR cardinality(p_collection_ids)<1 OR cardinality(p_collection_ids)>200
      OR p_received_amount_paise IS NULL OR p_received_amount_paise<0 OR p_idempotency_key IS NULL
-     OR cardinality(p_collection_ids)<>(SELECT count(DISTINCT x) FROM unnest(p_collection_ids) x) THEN
+     OR cardinality(p_collection_ids)<>(SELECT count(DISTINCT u.collection_id)::integer FROM unnest(p_collection_ids) AS u(collection_id)) THEN
     RAISE EXCEPTION 'Valid unique collection IDs, received amount and idempotency key are required' USING ERRCODE='22023';
   END IF;
   SELECT h.* INTO v_existing FROM public.delivery_cash_handovers h WHERE h.idempotency_key=p_idempotency_key;
