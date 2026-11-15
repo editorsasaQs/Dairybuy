@@ -91,7 +91,7 @@ SELECT extensions.ok(
   'skip enforces configured cutoff and blocks assigned deliveries'
 );
 SELECT extensions.ok(
-  position('same per-delivery price' IN pg_get_functiondef('private.change_subscription_item_vendor(uuid,uuid,character varying,date,uuid)'::regprocedure))>0
+  position('identical per-delivery price' IN pg_get_functiondef('private.change_subscription_item_vendor(uuid,uuid,character varying,date,uuid)'::regprocedure))>0
   AND position('effective_from' IN pg_get_functiondef('private.change_subscription_item_vendor(uuid,uuid,character varying,date,uuid)'::regprocedure))>0,
   'vendor change is future-effective and cannot silently change prepaid price'
 );
