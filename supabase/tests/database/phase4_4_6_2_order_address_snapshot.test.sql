@@ -1,6 +1,6 @@
 -- Phase 4.4.6.2: immutable order delivery-address snapshot regression.
 BEGIN;
-SELECT extensions.plan(19);
+SELECT extensions.plan(20);
 
 SELECT extensions.ok(
   to_regprocedure('private.enforce_order_delivery_address_snapshot()') IS NOT NULL,
@@ -22,6 +22,10 @@ SELECT extensions.ok(
 SELECT extensions.ok(
   (SELECT proconfig @> ARRAY['search_path=""'] FROM pg_proc WHERE oid = 'private.enforce_order_delivery_address_snapshot()'::regprocedure),
   'snapshot trigger function pins an empty search_path'
+);
+SELECT extensions.ok(
+  position('FOR SHARE' IN pg_get_functiondef('private.enforce_order_delivery_address_snapshot()'::regprocedure)) > 0,
+  'snapshot trigger takes a share lock on the customer address during order creation'
 );
 SELECT extensions.ok(
   (SELECT is_nullable = 'NO' FROM information_schema.columns

@@ -244,3 +244,81 @@ AS $wrapper$
 $wrapper$;
 REVOKE ALL ON FUNCTION public.create_cod_order(uuid,uuid,date,uuid,text) FROM PUBLIC,anon,service_role;
 GRANT EXECUTE ON FUNCTION public.create_cod_order(uuid,uuid,date,uuid,text) TO authenticated;
+
+
+-- Also serialize order creation against concurrent edits to the selected saved address.
+-- The existing trigger stays in place; this replaces only its server-side function body.
+CREATE OR REPLACE FUNCTION private.enforce_order_delivery_address_snapshot()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_address public.customer_addresses%ROWTYPE;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    SELECT a.*
+    INTO v_address
+    FROM public.customer_addresses AS a
+    WHERE a.id = NEW.customer_address_id
+      AND a.customer_id = NEW.customer_id
+    FOR SHARE;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Order address does not belong to the order customer'
+        USING ERRCODE = '23514';
+    END IF;
+
+    IF v_address.service_area_id IS DISTINCT FROM NEW.service_area_id
+       OR NOT EXISTS (
+         SELECT 1
+         FROM public.service_areas AS sa
+         JOIN public.service_area_pincodes AS sp ON sp.service_area_id = sa.id
+         WHERE sa.id = v_address.service_area_id
+           AND sa.is_active
+           AND sp.is_active
+           AND sp.pincode = v_address.pincode
+       ) THEN
+      RAISE EXCEPTION 'Order address is not serviceable for the selected service area'
+        USING ERRCODE = '23514';
+    END IF;
+
+    NEW.delivery_address_snapshot := pg_catalog.jsonb_build_object(
+      'schema_version', 1,
+      'recipient_name', v_address.recipient_name,
+      'phone', v_address.phone,
+      'address_line1', v_address.address_line1,
+      'address_line2', v_address.address_line2,
+      'landmark', v_address.landmark,
+      'city', v_address.city,
+      'state', v_address.state,
+      'pincode', v_address.pincode,
+      'service_area_id', v_address.service_area_id
+    );
+    NEW.delivery_address_snapshot_source := 'checkout';
+    NEW.delivery_address_snapshot_at := pg_catalog.transaction_timestamp();
+    RETURN NEW;
+  END IF;
+
+  IF ROW(
+    NEW.delivery_address_snapshot,
+    NEW.delivery_address_snapshot_source,
+    NEW.delivery_address_snapshot_at
+  ) IS DISTINCT FROM ROW(
+    OLD.delivery_address_snapshot,
+    OLD.delivery_address_snapshot_source,
+    OLD.delivery_address_snapshot_at
+  ) THEN
+    RAISE EXCEPTION 'Order delivery address snapshots are immutable'
+      USING ERRCODE = '42501';
+  END IF;
+
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION private.enforce_order_delivery_address_snapshot()
+  FROM PUBLIC, anon, authenticated, service_role;
+COMMENT ON FUNCTION private.enforce_order_delivery_address_snapshot() IS
+  'Captures an owned, serviceable delivery address under a FOR SHARE row lock on order insert and prevents later snapshot/provenance mutation.';

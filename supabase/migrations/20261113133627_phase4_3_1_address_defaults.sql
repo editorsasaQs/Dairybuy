@@ -1,6 +1,5 @@
 BEGIN;
 
--- Keep at most one default address per customer, including under concurrent writes.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_customer_addresses_one_default
 ON public.customer_addresses(customer_id)
 WHERE is_default = TRUE;
@@ -18,7 +17,6 @@ BEGIN
     RAISE EXCEPTION 'Authentication required' USING ERRCODE = '42501';
   END IF;
 
-  -- Serialize default changes for this customer before touching the partial unique index.
   PERFORM 1 FROM public.profiles WHERE id = v_customer_id FOR UPDATE;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Customer profile not found' USING ERRCODE = 'P0002';

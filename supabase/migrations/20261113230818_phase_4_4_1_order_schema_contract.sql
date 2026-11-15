@@ -30,12 +30,10 @@ ALTER TABLE public.orders
   ADD COLUMN IF NOT EXISTS delivery_date date,
   ADD COLUMN IF NOT EXISTS idempotency_key uuid;
 
--- Existing rows are intentionally left NULL; new checkout RPC will always supply both.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_customer_idempotency
   ON public.orders (customer_id, idempotency_key)
   WHERE idempotency_key IS NOT NULL;
 
--- Order history must not change when catalogue names/labels are edited later.
 ALTER TABLE public.order_items
   ADD COLUMN IF NOT EXISTS product_name_snapshot varchar(200),
   ADD COLUMN IF NOT EXISTS variant_name_snapshot varchar(200),
@@ -43,7 +41,6 @@ ALTER TABLE public.order_items
   ADD COLUMN IF NOT EXISTS pack_size_snapshot varchar(80),
   ADD COLUMN IF NOT EXISTS vendor_name_snapshot varchar(200);
 
--- Backfill legacy display values without changing quantities or money.
 UPDATE public.order_items AS oi
 SET product_name_snapshot = COALESCE(
       oi.product_name_snapshot,

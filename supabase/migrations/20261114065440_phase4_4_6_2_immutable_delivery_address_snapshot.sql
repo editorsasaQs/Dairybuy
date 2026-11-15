@@ -4,9 +4,6 @@ ALTER TABLE public.orders
   ADD COLUMN delivery_address_snapshot_source text,
   ADD COLUMN delivery_address_snapshot_at timestamptz;
 
--- Historical orders can only be reconstructed from the address currently linked to them.
--- The provenance explicitly prevents this data from being mistaken for checkout-time truth.
--- Preserve historical order.updated_at values while backfilling the new snapshot columns.
 ALTER TABLE public.orders DISABLE TRIGGER trg_orders_updated_at;
 
 UPDATE public.orders AS o
@@ -33,8 +30,7 @@ ALTER TABLE public.orders ENABLE TRIGGER trg_orders_updated_at;
 DO $migration_guard$
 BEGIN
   IF EXISTS (
-    SELECT 1
-    FROM public.orders
+    SELECT 1 FROM public.orders
     WHERE delivery_address_snapshot IS NULL
        OR delivery_address_snapshot_source IS NULL
        OR delivery_address_snapshot_at IS NULL
@@ -81,10 +77,7 @@ DECLARE
   v_address public.customer_addresses%ROWTYPE;
 BEGIN
   IF TG_OP = 'INSERT' THEN
-    -- Lock the owned address through the order transaction so concurrent edits cannot
-    -- change the address while its snapshot is being captured.
-    SELECT a.*
-    INTO v_address
+    SELECT a.* INTO v_address
     FROM public.customer_addresses AS a
     WHERE a.id = NEW.customer_address_id
       AND a.customer_id = NEW.customer_id
