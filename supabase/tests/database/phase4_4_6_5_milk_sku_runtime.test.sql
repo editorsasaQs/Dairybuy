@@ -41,17 +41,44 @@ DO UPDATE SET available_stock=EXCLUDED.available_stock,
               safety_stock=0,
               updated_at=pg_catalog.now();
 
+-- Derive each fixture's unit price from the authoritative current vendor-price rows.
+-- This keeps the runtime test coupled to the same CSV pricing contract as checkout.
+WITH fixture_lines(cart_id, product_variant_id, quantity, quantity_litres) AS (
+ VALUES
+  ('f1111111-0000-4000-8000-000000000010'::uuid,'milk-cow-500ml'::text,2,0.5::numeric),
+  ('f1111111-0000-4000-8000-000000000010'::uuid,'milk-cow-1l'::text,2,1.0::numeric),
+  ('f1111111-0000-4000-8000-000000000010'::uuid,'milk-cow-1l'::text,2,1.5::numeric),
+  ('f2222222-0000-4000-8000-000000000010'::uuid,'milk-cow-500ml'::text,1,0.5::numeric)
+)
 INSERT INTO public.cart_items
  (cart_id,product_variant_id,vendor_id,milk_type,quantity,unit_price_paise,quantity_litres)
-VALUES
- -- 500 ml selected SKU, quantity 2.
- ('f1111111-0000-4000-8000-000000000010','milk-cow-500ml','healthy-haryana','cow',2,4200,0.5),
- -- 1 L selected SKU, quantity 2.
- ('f1111111-0000-4000-8000-000000000010','milk-cow-1l','healthy-haryana','cow',2,7500,1.0),
- -- 1.5 L per delivery is represented by the 1 L selected variant plus a 500 ml remainder.
- ('f1111111-0000-4000-8000-000000000010','milk-cow-1l','healthy-haryana','cow',2,11700,1.5),
- -- Second customer requests one additional 500 ml pack after the first order consumes all available stock.
- ('f2222222-0000-4000-8000-000000000010','milk-cow-500ml','healthy-haryana','cow',1,4200,0.5);
+SELECT
+ f.cart_id,
+ f.product_variant_id,
+ 'healthy-haryana',
+ 'cow',
+ f.quantity,
+ CASE
+   WHEN f.quantity_litres = 0.5 THEN half_price.total_customer_delivery_paise
+   ELSE pg_catalog.floor(f.quantity_litres)::integer * one_price.price_per_delivery_paise
+     + CASE WHEN f.quantity_litres - pg_catalog.floor(f.quantity_litres) = 0.5
+         THEN half_price.price_per_delivery_paise ELSE 0 END
+     + one_price.delivery_fee_paise
+ END,
+ f.quantity_litres
+FROM fixture_lines f
+JOIN public.vendor_prices half_price
+  ON half_price.vendor_id='healthy-haryana'
+ AND half_price.product_variant_id='milk-cow-500ml'
+ AND half_price.milk_type='cow'
+ AND half_price.is_current AND half_price.effective_to IS NULL
+ AND half_price.effective_from <= pg_catalog.now()
+JOIN public.vendor_prices one_price
+  ON one_price.vendor_id='healthy-haryana'
+ AND one_price.product_variant_id='milk-cow-1l'
+ AND one_price.milk_type='cow'
+ AND one_price.is_current AND one_price.effective_to IS NULL
+ AND one_price.effective_from <= pg_catalog.now();
 
 CREATE TEMP TABLE phase4465_sku_order (
   order_id uuid, order_number varchar, total_paise integer, was_replayed boolean
