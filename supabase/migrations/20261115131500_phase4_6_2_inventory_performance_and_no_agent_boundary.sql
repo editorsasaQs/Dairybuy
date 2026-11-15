@@ -139,7 +139,7 @@ BEGIN
       USING ERRCODE='23505';
   END IF;
 
-  IF v_order.order_type<>'one_time' OR v_order.payment_method<>'cod' THEN
+  IF v_order.order_type NOT IN ('one_time','subscription') OR v_order.payment_method<>'cod' THEN
     RAISE EXCEPTION 'Only one-time COD orders accept cash collection records'
       USING ERRCODE='23514';
   END IF;
