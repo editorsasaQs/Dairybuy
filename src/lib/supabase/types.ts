@@ -207,8 +207,13 @@ export type Database = {
           amount_collected_paise: number
           collected_at: string
           collected_by_staff_id: string
+          collection_notes: string | null
           id: string
           order_id: string
+          receipt_reference: string | null
+          rejection_reason: string | null
+          rejected_at: string | null
+          rejected_by_manager_id: string | null
           status: string
           verified_at: string | null
           verified_by_manager_id: string | null
@@ -217,8 +222,13 @@ export type Database = {
           amount_collected_paise: number
           collected_at?: string
           collected_by_staff_id: string
+          collection_notes?: string | null
           id?: string
           order_id: string
+          receipt_reference?: string | null
+          rejection_reason?: string | null
+          rejected_at?: string | null
+          rejected_by_manager_id?: string | null
           status?: string
           verified_at?: string | null
           verified_by_manager_id?: string | null
@@ -227,8 +237,13 @@ export type Database = {
           amount_collected_paise?: number
           collected_at?: string
           collected_by_staff_id?: string
+          collection_notes?: string | null
           id?: string
           order_id?: string
+          receipt_reference?: string | null
+          rejection_reason?: string | null
+          rejected_at?: string | null
+          rejected_by_manager_id?: string | null
           status?: string
           verified_at?: string | null
           verified_by_manager_id?: string | null
@@ -1707,6 +1722,34 @@ export type Database = {
           ledger_reserved_stock: number
           order_status: string | null
           detail: string
+        }[]
+      }
+      review_cod_cash_collection: {
+        Args: { p_order_id: string; p_decision: string; p_note?: string | null }
+        Returns: {
+          collection_id: string
+          order_id: string
+          collection_status: string
+          payment_status: Database["public"]["Enums"]["payment_status_enum"]
+          was_replayed: boolean
+        }[]
+      }
+      get_admin_cod_collection: {
+        Args: { p_order_id: string }
+        Returns: {
+          collection_id: string
+          order_id: string
+          amount_collected_paise: number
+          collection_status: string
+          collected_by_staff_id: string
+          collected_at: string
+          receipt_reference: string | null
+          collection_notes: string | null
+          verified_by_manager_id: string | null
+          verified_at: string | null
+          rejected_by_manager_id: string | null
+          rejected_at: string | null
+          rejection_reason: string | null
         }[]
       }
       set_customer_default_address: { Args: { p_address_id: string }; Returns: undefined }
