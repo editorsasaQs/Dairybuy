@@ -25,7 +25,10 @@ export function SubscriptionQuoteBuilder() {
   const [addressId, setAddressId] = useState("");
   const [slotId, setSlotId] = useState("");
   const [plan, setPlan] = useState("7_day");
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] = useState(() => {
+    const tomorrow = new Date(Date.now() + 86400000);
+    return new Date(tomorrow.getTime() - tomorrow.getTimezoneOffset() * 60000).toISOString().slice(0,10);
+  });
   const [productId, setProductId] = useState("");
   const [milkType, setMilkType] = useState("cow");
   const [vendorId, setVendorId] = useState("");
@@ -77,7 +80,7 @@ export function SubscriptionQuoteBuilder() {
   async function getQuote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setQuote(null); setQuoting(true);
     try {
-      const chosenVendorId = isCanteen ? canteen?.id : vendorId;
+      const chosenVendorId = effectiveVendorId;
       let referenceVariantId = "";
       if (isCanteen) {
         referenceVariantId = canteen?.pricing.find((row) => row.litres === 1)?.productVariantId || "";
@@ -124,7 +127,7 @@ export function SubscriptionQuoteBuilder() {
         <select value={milkType} onChange={(e) => setMilkType(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal"><option value="cow">Cow milk</option><option value="buffalo">Buffalo milk</option></select>
       </label> : null}
       <label className="grid gap-1 text-sm font-semibold">{isCanteen ? "Canteen supplier" : "Milk vendor"}
-        <select required disabled={!!isCanteen} value={isCanteen ? canteen?.id || "" : vendorId} onChange={(e) => setVendorId(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal">
+        <select required disabled={!!isCanteen} value={effectiveVendorId} onChange={(e) => setVendorId(e.target.value)} className="min-h-12 rounded-xl border border-border px-3 font-normal">
           {isCanteen ? <option value={canteen?.id || ""}>{canteen?.name || "Canteen Milk Centre"}</option> : vendorOptions.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
         </select>
       </label>
