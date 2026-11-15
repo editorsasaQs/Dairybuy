@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS public.delivery_cash_handovers (
   delivery_slot_id uuid NOT NULL REFERENCES public.delivery_slots(id) ON DELETE RESTRICT,
   service_area_id uuid NOT NULL REFERENCES public.service_areas(id) ON DELETE RESTRICT,
   expected_amount_paise bigint NOT NULL CHECK (expected_amount_paise > 0),
-  received_amount_paise bigint NOT NULL CHECK (received_amount_paise > 0),
+  received_amount_paise bigint NOT NULL CHECK (received_amount_paise >= 0),
   status text NOT NULL DEFAULT 'submitted' CHECK (status IN ('submitted','accepted','disputed')),
   submitted_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   submitted_at timestamptz NOT NULL DEFAULT now(),
@@ -198,7 +198,7 @@ DECLARE
 BEGIN
   IF v_actor IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
   IF p_collection_ids IS NULL OR cardinality(p_collection_ids)<1 OR cardinality(p_collection_ids)>200
-     OR p_received_amount_paise IS NULL OR p_received_amount_paise<=0 OR p_idempotency_key IS NULL
+     OR p_received_amount_paise IS NULL OR p_received_amount_paise<0 OR p_idempotency_key IS NULL
      OR cardinality(p_collection_ids)<>(SELECT count(DISTINCT x) FROM unnest(p_collection_ids) x) THEN
     RAISE EXCEPTION 'Valid unique collection IDs, received amount and idempotency key are required' USING ERRCODE='22023';
   END IF;
@@ -347,8 +347,8 @@ GRANT EXECUTE ON FUNCTION public.review_delivery_cash_handover(uuid,text,text) T
 CREATE TABLE IF NOT EXISTS public.delivery_cash_handover_adjustments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   handover_id uuid NOT NULL REFERENCES public.delivery_cash_handovers(id) ON DELETE RESTRICT,
-  old_received_amount_paise bigint NOT NULL CHECK (old_received_amount_paise > 0),
-  new_received_amount_paise bigint NOT NULL CHECK (new_received_amount_paise > 0),
+  old_received_amount_paise bigint NOT NULL CHECK (old_received_amount_paise >= 0),
+  new_received_amount_paise bigint NOT NULL CHECK (new_received_amount_paise >= 0),
   reason text NOT NULL CHECK (pg_catalog.length(pg_catalog.btrim(reason)) BETWEEN 5 AND 500),
   evidence_reference text CHECK (evidence_reference IS NULL OR pg_catalog.length(evidence_reference) <= 200),
   created_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
@@ -377,7 +377,7 @@ BEGIN
     RAISE EXCEPTION 'Only owner/admin can correct a cash handover' USING ERRCODE='42501';
   END IF;
   IF p_handover_id IS NULL OR p_corrected_received_amount_paise IS NULL
-     OR p_corrected_received_amount_paise<=0 OR v_reason IS NULL
+     OR p_corrected_received_amount_paise<0 OR v_reason IS NULL
      OR pg_catalog.length(v_reason)<5 OR pg_catalog.length(v_reason)>500
      OR (p_evidence_reference IS NOT NULL AND pg_catalog.length(p_evidence_reference)>200) THEN
     RAISE EXCEPTION 'Valid corrected cash amount, reason and evidence are required' USING ERRCODE='22023';
