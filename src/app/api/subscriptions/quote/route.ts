@@ -15,30 +15,30 @@ export async function POST(request: Request) {
     try { body = await request.json(); } catch { return NextResponse.json({ success: false, error: "Invalid JSON." }, { status: 400, headers }); }
     if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ success: false, error: "Invalid quote request." }, { status: 400, headers });
     const input = body as Record<string, unknown>;
-    if (typeof input.addressId !== "string" || !uuidPattern.test(input.addressId) ||
-        typeof input.deliverySlotId !== "string" || !uuidPattern.test(input.deliverySlotId) ||
-        typeof input.startDate !== "string" || !datePattern.test(input.startDate) ||
-        !["7_day", "30_day"].includes(String(input.planType)) ||
-        !Array.isArray(input.items) || input.items.length < 1 || input.items.length > 20) {
+    if (typeof input["addressId"] !== "string" || !uuidPattern.test(input["addressId"]) ||
+        typeof input["deliverySlotId"] !== "string" || !uuidPattern.test(input["deliverySlotId"]) ||
+        typeof input["startDate"] !== "string" || !datePattern.test(input["startDate"]) ||
+        !["7_day", "30_day"].includes(String(input["planType"])) ||
+        !Array.isArray(input["items"]) || input["items"].length < 1 || input["items"].length > 20) {
       return NextResponse.json({ success: false, error: "Choose an address, delivery slot, start date, fixed plan and at least one milk item." }, { status: 400, headers });
     }
-    for (const item of input.items) {
+    for (const item of input["items"]) {
       if (!item || typeof item !== "object" || Array.isArray(item)) return NextResponse.json({ success: false, error: "Invalid milk item." }, { status: 400, headers });
       const line = item as Record<string, unknown>;
-      if (typeof line.product_variant_id !== "string" || line.product_variant_id.length > 100 ||
-          typeof line.vendor_id !== "string" || line.vendor_id.length > 100 ||
-          !["cow", "buffalo", "canteen"].includes(String(line.milk_type)) ||
-          !Number.isInteger(line.quantity) || Number(line.quantity) < 1 || Number(line.quantity) > 100 ||
-          typeof line.quantity_litres !== "number" || line.quantity_litres < 0.5 || line.quantity_litres > 10 || line.quantity_litres * 2 !== Math.trunc(line.quantity_litres * 2)) {
+      if (typeof line["product_variant_id"] !== "string" || line["product_variant_id"].length > 100 ||
+          typeof line["vendor_id"] !== "string" || line["vendor_id"].length > 100 ||
+          !["cow", "buffalo", "canteen"].includes(String(line["milk_type"])) ||
+          !Number.isInteger(line["quantity"]) || Number(line["quantity"]) < 1 || Number(line["quantity"]) > 100 ||
+          typeof line["quantity_litres"] !== "number" || line["quantity_litres"] < 0.5 || line["quantity_litres"] > 10 || line["quantity_litres"] * 2 !== Math.trunc(line["quantity_litres"] * 2)) {
         return NextResponse.json({ success: false, error: "Milk selections must use an approved vendor and 0.5–10 L in 0.5 L increments." }, { status: 400, headers });
       }
     }
     const { data, error } = await supabase.rpc("quote_subscription", {
-      p_address_id: input.addressId,
-      p_delivery_slot_id: input.deliverySlotId,
-      p_start_date: input.startDate,
-      p_plan_type: input.planType as "7_day" | "30_day",
-      p_items: input.items as never,
+      p_address_id: input["addressId"],
+      p_delivery_slot_id: input["deliverySlotId"],
+      p_start_date: input["startDate"],
+      p_plan_type: input["planType"] as "7_day" | "30_day",
+      p_items: input["items"] as never,
     });
     if (error) {
       const expected = ["22023", "23514", "42501", "22003"].includes(error.code ?? "");
