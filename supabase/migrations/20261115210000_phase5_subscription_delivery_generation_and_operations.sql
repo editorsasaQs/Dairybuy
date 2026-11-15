@@ -42,7 +42,8 @@ ALTER TABLE public.subscription_deliveries
   CHECK (
     (subtotal_paise IS NULL AND total_paise IS NULL)
     OR
-    (subtotal_paise>=0 AND discount_paise>=0 AND discount_paise<=subtotal_paise
+    (subtotal_paise IS NOT NULL AND total_paise IS NOT NULL
+      AND subtotal_paise>=0 AND discount_paise>=0 AND discount_paise<=subtotal_paise
       AND total_paise=subtotal_paise-discount_paise)
   );
 
@@ -647,5 +648,172 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.audit_inventory_reservations() FROM PUBLIC,anon,service_role;
 GRANT EXECUTE ON FUNCTION public.audit_inventory_reservations() TO authenticated;
+
+
+-- Release a not-yet-dispatched subscription order reservation before customer skip
+-- or subscription cancellation. Stock is not consumed and the ledger remains auditable.
+CREATE OR REPLACE FUNCTION private.release_subscription_order_reservation(
+  p_order_id uuid,p_actor uuid,p_reason text
+)
+RETURNS void
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=''
+AS $function$
+DECLARE v_order public.orders%ROWTYPE; v_inv record; v_reserved integer; v_released integer:=0;
+BEGIN
+  SELECT o.* INTO v_order FROM public.orders o WHERE o.id=p_order_id FOR UPDATE;
+  IF NOT FOUND OR v_order.order_type<>'subscription' OR v_order.status<>'pending_confirmation' THEN
+    RAISE EXCEPTION 'Only an unassigned pending subscription order can release its reservation'
+      USING ERRCODE='23514';
+  END IF;
+  FOR v_inv IN
+    SELECT i.id,i.reserved_stock FROM public.inventory i
+    WHERE EXISTS (SELECT 1 FROM public.inventory_movements im
+      WHERE im.inventory_id=i.id AND im.reference_id=p_order_id::text
+        AND im.movement_type IN ('order_reservation','order_reservation_release'))
+    ORDER BY i.id FOR UPDATE
+  LOOP
+    SELECT COALESCE(SUM(im.change_amount),0)::integer INTO v_reserved
+    FROM public.inventory_movements im WHERE im.inventory_id=v_inv.id
+      AND im.reference_id=p_order_id::text
+      AND im.movement_type IN ('order_reservation','order_reservation_release');
+    IF v_reserved<0 OR v_inv.reserved_stock<v_reserved THEN
+      RAISE EXCEPTION 'Subscription inventory reservation is inconsistent; release aborted'
+        USING ERRCODE='23514';
+    END IF;
+    IF v_reserved>0 THEN
+      UPDATE public.inventory SET reserved_stock=reserved_stock-v_reserved,updated_at=pg_catalog.now()
+      WHERE id=v_inv.id;
+      INSERT INTO public.inventory_movements(inventory_id,change_amount,movement_type,reference_id,notes,created_by)
+      VALUES(v_inv.id,-v_reserved,'order_reservation_release',p_order_id::text,p_reason,p_actor);
+      v_released:=v_released+1;
+    END IF;
+  END LOOP;
+  IF v_released=0 THEN
+    RAISE EXCEPTION 'Subscription inventory reservation is missing; release aborted'
+      USING ERRCODE='23514';
+  END IF;
+  UPDATE public.orders SET status='cancelled',updated_at=pg_catalog.now() WHERE id=p_order_id;
+  INSERT INTO public.order_status_history(order_id,from_status,to_status,changed_by,note)
+  VALUES(p_order_id,v_order.status,'cancelled',p_actor,p_reason);
+END;
+$function$;
+REVOKE ALL ON FUNCTION private.release_subscription_order_reservation(uuid,uuid,text)
+  FROM PUBLIC,anon,authenticated,service_role;
+
+CREATE OR REPLACE FUNCTION private.skip_subscription_delivery(
+  p_subscription_id uuid,p_skip_date date,p_reason text,p_idempotency_key uuid
+)
+RETURNS TABLE(subscription_id uuid,skip_date date,was_replayed boolean)
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=''
+AS $function$
+DECLARE
+  v_actor uuid:=auth.uid(); v_sub public.subscriptions%ROWTYPE; v_slot public.delivery_slots%ROWTYPE;
+  v_today date; v_local_time time; v_existing public.subscription_skip_records%ROWTYPE;
+  v_delivery public.subscription_deliveries%ROWTYPE; v_reason text:=NULLIF(pg_catalog.btrim(p_reason),'');
+BEGIN
+  IF v_actor IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  IF p_subscription_id IS NULL OR p_skip_date IS NULL OR p_idempotency_key IS NULL
+     OR (p_reason IS NOT NULL AND pg_catalog.length(p_reason)>300) THEN
+    RAISE EXCEPTION 'Subscription, skip date and idempotency key are required' USING ERRCODE='22023';
+  END IF;
+  SELECT s.* INTO v_sub FROM public.subscriptions s
+  WHERE s.id=p_subscription_id AND (s.customer_id=v_actor OR private.is_admin_or_owner()) FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Subscription not found' USING ERRCODE='P0002'; END IF;
+  SELECT r.* INTO v_existing FROM public.subscription_skip_records r
+  WHERE r.subscription_id=v_sub.id AND (r.skip_date=p_skip_date OR r.idempotency_key=p_idempotency_key)
+  LIMIT 1;
+  IF FOUND THEN
+    IF v_existing.skip_date<>p_skip_date OR
+       (v_existing.idempotency_key IS NOT NULL AND v_existing.idempotency_key<>p_idempotency_key) THEN
+      RAISE EXCEPTION 'Skip date already has a different request' USING ERRCODE='23505';
+    END IF;
+    RETURN QUERY SELECT v_sub.id,p_skip_date,true; RETURN;
+  END IF;
+  IF v_sub.status<>'active' OR p_skip_date<v_sub.start_date OR p_skip_date>v_sub.end_date THEN
+    RAISE EXCEPTION 'Only dates within an active subscription can be skipped' USING ERRCODE='23514';
+  END IF;
+  v_today:=(pg_catalog.now() AT TIME ZONE 'Asia/Kolkata')::date;
+  v_local_time:=(pg_catalog.now() AT TIME ZONE 'Asia/Kolkata')::time;
+  IF p_skip_date<v_today THEN RAISE EXCEPTION 'Past deliveries cannot be skipped' USING ERRCODE='23514'; END IF;
+  SELECT ds.* INTO v_slot FROM public.delivery_slots ds WHERE ds.id=v_sub.delivery_slot_id;
+  IF p_skip_date=v_today AND v_local_time>=v_slot.cancellation_deadline_time THEN
+    RAISE EXCEPTION 'The delivery skip cutoff has passed' USING ERRCODE='23514';
+  END IF;
+  SELECT d.* INTO v_delivery FROM public.subscription_deliveries d
+  WHERE d.subscription_id=v_sub.id AND d.delivery_date=p_skip_date FOR UPDATE;
+  IF FOUND THEN
+    IF v_delivery.status<>'scheduled' OR v_delivery.assigned_staff_id IS NOT NULL THEN
+      RAISE EXCEPTION 'Assigned or in-progress deliveries cannot be skipped' USING ERRCODE='23514';
+    END IF;
+    IF v_delivery.order_id IS NOT NULL THEN
+      PERFORM private.release_subscription_order_reservation(
+        v_delivery.order_id,v_actor,'Customer skipped delivery before dispatch'
+      );
+    END IF;
+  END IF;
+  INSERT INTO public.subscription_skip_records(subscription_id,skip_date,reason,idempotency_key,created_by)
+  VALUES(v_sub.id,p_skip_date,v_reason,p_idempotency_key,v_actor);
+  IF v_delivery.id IS NOT NULL THEN
+    UPDATE public.subscription_deliveries SET status='skipped',delivery_notes='Customer skipped this delivery'
+    WHERE id=v_delivery.id;
+  END IF;
+  INSERT INTO public.subscription_lifecycle_events(subscription_id,actor_id,event_type,effective_date,metadata)
+  VALUES(v_sub.id,v_actor,'delivery_skipped',p_skip_date,pg_catalog.jsonb_build_object('reason',v_reason));
+  RETURN QUERY SELECT v_sub.id,p_skip_date,false;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION private.cancel_subscription(p_subscription_id uuid,p_reason text DEFAULT NULL)
+RETURNS TABLE(subscription_id uuid,subscription_status public.subscription_status_enum,was_replayed boolean)
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=''
+AS $function$
+DECLARE
+  v_actor uuid:=auth.uid(); v_sub public.subscriptions%ROWTYPE; v_today date;
+  v_slot public.delivery_slots%ROWTYPE; v_local_time time; v_delivery record;
+  v_reason text:=NULLIF(pg_catalog.btrim(p_reason),'');
+BEGIN
+  IF v_actor IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  IF p_reason IS NOT NULL AND pg_catalog.length(p_reason)>300 THEN
+    RAISE EXCEPTION 'Cancellation reason is too long' USING ERRCODE='22023';
+  END IF;
+  SELECT s.* INTO v_sub FROM public.subscriptions s
+  WHERE s.id=p_subscription_id AND (s.customer_id=v_actor OR private.is_admin_or_owner()) FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Subscription not found' USING ERRCODE='P0002'; END IF;
+  IF v_sub.status='cancelled' THEN RETURN QUERY SELECT v_sub.id,v_sub.status,true; RETURN; END IF;
+  IF v_sub.status NOT IN ('active','paused') THEN
+    RAISE EXCEPTION 'Only active or paused subscriptions can be cancelled' USING ERRCODE='23514';
+  END IF;
+  v_today:=(pg_catalog.now() AT TIME ZONE 'Asia/Kolkata')::date;
+  v_local_time:=(pg_catalog.now() AT TIME ZONE 'Asia/Kolkata')::time;
+  SELECT ds.* INTO v_slot FROM public.delivery_slots ds WHERE ds.id=v_sub.delivery_slot_id;
+  IF v_sub.next_delivery_date<=v_today AND v_local_time>=v_slot.cancellation_deadline_time THEN
+    RAISE EXCEPTION 'The current delivery cutoff has passed; cancellation applies to future deliveries only' USING ERRCODE='23514';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.subscription_deliveries d
+    WHERE d.subscription_id=v_sub.id AND d.delivery_date>=v_today
+      AND d.status IN ('assigned','out_for_delivery')) THEN
+    RAISE EXCEPTION 'An assigned or dispatched delivery must be resolved before subscription cancellation' USING ERRCODE='23514';
+  END IF;
+  FOR v_delivery IN
+    SELECT d.id,d.order_id FROM public.subscription_deliveries d
+    WHERE d.subscription_id=v_sub.id AND d.delivery_date>=v_today
+      AND d.status='scheduled' AND d.assigned_staff_id IS NULL
+    ORDER BY d.delivery_date,d.id FOR UPDATE
+  LOOP
+    IF v_delivery.order_id IS NOT NULL THEN
+      PERFORM private.release_subscription_order_reservation(
+        v_delivery.order_id,v_actor,'Subscription cancelled before dispatch'
+      );
+    END IF;
+    UPDATE public.subscription_deliveries SET status='skipped',delivery_notes='Subscription cancelled'
+    WHERE id=v_delivery.id;
+  END LOOP;
+  UPDATE public.subscriptions SET status='cancelled',cancelled_at=pg_catalog.now(),
+    paused_at=NULL,next_delivery_date=NULL,updated_at=pg_catalog.now() WHERE id=v_sub.id;
+  INSERT INTO public.subscription_lifecycle_events(subscription_id,actor_id,event_type,effective_date,metadata)
+  VALUES(v_sub.id,v_actor,'cancelled',v_today,pg_catalog.jsonb_build_object('reason',v_reason,'refund_created',false));
+  RETURN QUERY SELECT v_sub.id,'cancelled'::public.subscription_status_enum,false;
+END;
+$function$;
 
 COMMIT;
