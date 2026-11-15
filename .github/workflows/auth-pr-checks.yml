@@ -153,7 +153,10 @@ jobs:
         run: supabase stop --no-backup
 
   auth-e2e:
-    if: github.actor != 'github-actions[bot]'
+    # Supabase local stacks use fixed host ports; serialize this job after
+    # database-rbac so both jobs cannot bind 54322/54321 concurrently.
+    needs: database-rbac
+    if: ${{ !cancelled() && github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
