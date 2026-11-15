@@ -91,7 +91,7 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
             <p className="mt-2 text-sm text-muted-foreground">Read-only reservation reconciliation · Owner and admin access only</p>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm font-semibold">
-            <Link href="/admin/orders" className="text-highlight-ink underline">Order management</Link>
+            <Link href="/admin/inventory" className="text-highlight-ink underline">Physical inventory</Link>\n            <Link href="/admin/orders" className="text-highlight-ink underline">Order management</Link>
             <Link href="/account" className="text-highlight-ink underline">Back to account</Link>
           </div>
         </div>
