@@ -6,7 +6,7 @@ import { isAdminOrOwner } from "@/lib/services/auth-service";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/types";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export type InventoryActionState = { success: boolean; message: string };
 const failure = (message: string): InventoryActionState => ({ success: false, message });
 
