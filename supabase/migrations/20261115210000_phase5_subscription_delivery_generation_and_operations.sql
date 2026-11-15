@@ -32,7 +32,19 @@ ALTER TABLE public.orders
 ALTER TABLE public.subscription_deliveries
   ADD COLUMN IF NOT EXISTS order_id uuid,
   ADD COLUMN IF NOT EXISTS assigned_at timestamptz,
-  ADD COLUMN IF NOT EXISTS failed_at timestamptz;
+  ADD COLUMN IF NOT EXISTS failed_at timestamptz,
+  ADD COLUMN IF NOT EXISTS subtotal_paise integer,
+  ADD COLUMN IF NOT EXISTS discount_paise integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS total_paise integer;
+
+ALTER TABLE public.subscription_deliveries
+  ADD CONSTRAINT chk_subscription_delivery_daily_totals
+  CHECK (
+    (subtotal_paise IS NULL AND total_paise IS NULL)
+    OR
+    (subtotal_paise>=0 AND discount_paise>=0 AND discount_paise<=subtotal_paise
+      AND total_paise=subtotal_paise-discount_paise)
+  );
 
 ALTER TABLE public.subscription_deliveries
   ADD CONSTRAINT fk_subscription_deliveries_order
@@ -200,6 +212,11 @@ BEGIN
   LOOP
     IF EXISTS (SELECT 1 FROM public.subscription_skip_records sr
       WHERE sr.subscription_id=v_sub.id AND sr.skip_date=p_delivery_date) THEN
+      INSERT INTO public.subscription_deliveries(
+        subscription_id,delivery_date,delivery_slot_id,status,subtotal_paise,discount_paise,total_paise,delivery_notes
+      ) VALUES(v_sub.id,p_delivery_date,v_sub.delivery_slot_id,'skipped',
+        v_subtotal::integer,v_discount,v_total::integer,'Customer skipped this delivery')
+      ON CONFLICT (subscription_id,delivery_date,delivery_slot_id) DO NOTHING;
       UPDATE public.subscriptions
       SET next_delivery_date=CASE WHEN p_delivery_date>=end_date THEN NULL ELSE p_delivery_date+1 END,
           delivery_generation_last_date=p_delivery_date,updated_at=pg_catalog.now()
@@ -230,8 +247,11 @@ BEGIN
       CONTINUE;
     END IF;
 
-    INSERT INTO public.subscription_deliveries(subscription_id,delivery_date,delivery_slot_id,status)
-    VALUES(v_sub.id,p_delivery_date,v_sub.delivery_slot_id,'scheduled')
+    INSERT INTO public.subscription_deliveries(
+      subscription_id,delivery_date,delivery_slot_id,status,subtotal_paise,discount_paise,total_paise
+    )
+    VALUES(v_sub.id,p_delivery_date,v_sub.delivery_slot_id,'scheduled',
+      v_subtotal::integer,v_discount,v_total::integer)
     ON CONFLICT (subscription_id,delivery_date,delivery_slot_id) DO NOTHING
     RETURNING id INTO v_delivery_id;
     IF v_delivery_id IS NULL THEN
