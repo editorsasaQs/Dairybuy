@@ -19,7 +19,7 @@
 - Skip/cancel actions call lifecycle RPCs; cutoff enforcement and stock release remain server-side.
 - Admin and staff pages rely on Supabase RLS and database RPC authorization, not client-side role claims.
 
-## Remaining release gates
+## Daily scheduler configuration\n- Vercel cron invokes `/api/cron/subscriptions` at 19:00 UTC (00:30 Asia/Kolkata) every day.\n- Configure `CRON_SECRET`, `SUPABASE_URL` (or `NEXT_PUBLIC_SUPABASE_URL`) and `SUPABASE_SERVICE_ROLE_KEY` in the Vercel project environment. The service-role key is read only in this server route and must never use a `NEXT_PUBLIC_` prefix.\n- The endpoint uses constant-time bearer-secret comparison, derives the Kolkata-local date on the server, and calls the service-role-only database generator. It fails closed when any secret is missing.\n- This repository change does not add or reveal production secrets and does not deploy or enable the schedule in Vercel.\n\n## Remaining release gates
 - Full CI (lint, typecheck, unit, build, migrations, pgTAP, authenticated browser E2E) must pass on this branch.
 - Phase 6 gateway choice, signed webhook/payment verification, activation, refunds and reconciliation require separate approval and implementation.
 - The daily generator still requires a production scheduler invocation after service-role/cron secrets and deployment configuration are approved. No production secret or deployment is modified here.
