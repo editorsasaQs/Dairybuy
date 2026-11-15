@@ -1752,6 +1752,28 @@ export type Database = {
           rejection_reason: string | null
         }[]
       }
+      resolve_cod_collection_discrepancy: {
+        Args: { p_order_id: string; p_corrected_amount_paise: number; p_reason: string; p_evidence_reference?: string | null }
+        Returns: { collection_id: string; order_id: string; collection_status: string; payment_status: Database["public"]["Enums"]["payment_status_enum"]; was_replayed: boolean }[]
+      }
+      submit_delivery_cash_handover: {
+        Args: { p_collection_ids: string[]; p_received_amount_paise: number; p_idempotency_key: string }
+        Returns: { handover_id: string; handover_number: string; expected_amount_paise: number; received_amount_paise: number; handover_status: string; was_replayed: boolean }[]
+      }
+      review_delivery_cash_handover: {
+        Args: { p_handover_id: string; p_decision: string; p_note?: string | null }
+        Returns: { handover_id: string; handover_status: string; was_replayed: boolean }[]
+      }
+      get_admin_cod_financial_report: {
+        Args: { p_from_date: string; p_to_date: string; p_service_area_id?: string | null; p_staff_id?: string | null }
+        Returns: {
+          order_id: string; order_number: string; business_date: string; service_area_id: string; service_area_name: string;
+          delivery_slot: string; staff_id: string; staff_name: string; collection_id: string; collection_status: string;
+          amount_collected_paise: number; order_total_paise: number; variance_paise: number; collected_at: string;
+          handover_id: string | null; handover_number: string | null; handover_status: string | null;
+          handover_expected_paise: number | null; handover_received_paise: number | null;
+        }[]
+      }
       set_customer_default_address: { Args: { p_address_id: string }; Returns: undefined }
     }
     Enums: {
