@@ -1,6 +1,6 @@
 -- Phase 5.3 lifecycle RPC security and contract checks.
 BEGIN;
-SELECT extensions.plan(16);
+SELECT extensions.plan(17);
 
 SELECT extensions.ok(
   to_regclass('public.subscription_item_vendor_changes') IS NOT NULL
@@ -99,6 +99,12 @@ SELECT extensions.ok(
   position('refund_created' IN pg_get_functiondef('private.cancel_subscription(uuid,text)'::regprocedure))>0
   AND position('status=''cancelled''' IN pg_get_functiondef('private.cancel_subscription(uuid,text)'::regprocedure))>0,
   'cancellation is audited and does not fabricate a refund'
+);
+
+SELECT extensions.ok(
+  EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.subscriptions'::regclass
+    AND conname='chk_subscription_active_requires_verified_payment' AND NOT convalidated),
+  'active, paused and completed states require a trusted payment verification timestamp for all new writes'
 );
 
 SELECT * FROM extensions.finish();
