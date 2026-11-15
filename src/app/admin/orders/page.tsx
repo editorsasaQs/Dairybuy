@@ -99,7 +99,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
             <h1 className="mt-2 text-3xl font-bold">Order management</h1>
             <p className="mt-2 text-sm text-muted-foreground">One-time COD orders · Owner and admin access only</p>
           </div>
-          <div className="flex gap-4"><Link href="/admin/inventory/audit" className="text-sm font-semibold text-highlight-ink underline">Inventory audit</Link><Link href="/account" className="text-sm font-semibold text-highlight-ink underline">Back to account</Link></div>
+          <div className="flex gap-4"><Link href="/admin/inventory/audit" className="text-sm font-semibold text-highlight-ink underline">Inventory audit</Link><Link href="/admin/finance/cod" className="text-sm font-semibold text-highlight-ink underline">COD financials</Link><Link href="/account" className="text-sm font-semibold text-highlight-ink underline">Back to account</Link></div>
         </div>
 
         <form method="get" className="mb-6 grid gap-3 rounded-3xl border-2 border-white bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5">

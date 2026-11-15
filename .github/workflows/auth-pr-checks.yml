@@ -190,6 +190,9 @@ jobs:
       - name: Run Phase 4.5.2 COD cash review security regression
         run: supabase test db supabase/tests/database/phase4_5_2_cod_cash_collection_review.test.sql
 
+      - name: Run Phase 4.5.3 COD discrepancy, handover and financial report regression
+        run: supabase test db supabase/tests/database/phase4_5_3_cod_reconciliation_financial_reports.test.sql
+
       - name: Run inventory reservation concurrency regression
         run: bash supabase/tests/concurrency/inventory-reservation-concurrency.sh
 

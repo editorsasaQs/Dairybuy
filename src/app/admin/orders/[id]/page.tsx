@@ -6,6 +6,7 @@ import { isValidOrderId } from "@/lib/services/admin-order-filters";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { OrderStatusActions } from "./OrderStatusActions";
 import { CodCollectionReview, type CodCollectionReviewRecord } from "./CodCollectionReview";
+import { CodDiscrepancyResolution } from "./CodDiscrepancyResolution";
 import { parseOrderDeliveryAddressSnapshot } from "@/lib/services/order-address-snapshot";
 import { getInventoryAuditSeverity, resolveInventoryAuditLabels, summarizeInventoryAuditSeverity, type InventoryAuditProduct, type InventoryAuditVariant } from "@/lib/services/inventory-audit-labels";
 
@@ -161,6 +162,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
         </section>
 
         <CodCollectionReview orderId={order.id} orderTotalPaise={order.total_paise} collection={codCollection} />
+        {codCollection ? <CodDiscrepancyResolution orderId={order.id} amountPaise={codCollection.amount_collected_paise} status={codCollection.collection_status} /> : null}
 
         <OrderStatusActions orderId={order.id} currentStatus={order.status} />
 
