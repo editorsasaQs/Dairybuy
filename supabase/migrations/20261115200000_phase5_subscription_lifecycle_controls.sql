@@ -63,7 +63,7 @@ CREATE OR REPLACE FUNCTION private.pause_subscription(p_subscription_id uuid)
 RETURNS TABLE(subscription_id uuid,subscription_status public.subscription_status_enum,was_replayed boolean)
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=''
 AS $function$
-DECLARE v_actor uuid:=auth.uid(); v_sub public.subscriptions%ROWTYPE; v_today date;
+DECLARE v_actor uuid:=auth.uid(); v_sub public.subscriptions%ROWTYPE; v_today date; v_slot public.delivery_slots%ROWTYPE; v_local_time time;
 BEGIN
   IF v_actor IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
   SELECT s.* INTO v_sub FROM public.subscriptions s
@@ -76,6 +76,11 @@ BEGIN
     RAISE EXCEPTION 'Only active, payment-verified subscriptions can be paused' USING ERRCODE='23514';
   END IF;
   v_today:=(pg_catalog.now() AT TIME ZONE 'Asia/Kolkata')::date;
+  v_local_time:=(pg_catalog.now() AT TIME ZONE 'Asia/Kolkata')::time;
+  SELECT ds.* INTO v_slot FROM public.delivery_slots ds WHERE ds.id=v_sub.delivery_slot_id;
+  IF v_sub.next_delivery_date<=v_today AND v_local_time>=v_slot.cancellation_deadline_time THEN
+    RAISE EXCEPTION 'The current delivery cutoff has passed; pause starts with a future delivery' USING ERRCODE='23514';
+  END IF;
   IF EXISTS (SELECT 1 FROM public.subscription_deliveries d
     WHERE d.subscription_id=v_sub.id AND d.delivery_date>=v_today
       AND d.status IN ('assigned','out_for_delivery')) THEN
@@ -178,7 +183,7 @@ CREATE OR REPLACE FUNCTION private.cancel_subscription(p_subscription_id uuid,p_
 RETURNS TABLE(subscription_id uuid,subscription_status public.subscription_status_enum,was_replayed boolean)
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=''
 AS $function$
-DECLARE v_actor uuid:=auth.uid(); v_sub public.subscriptions%ROWTYPE; v_today date; v_reason text:=NULLIF(pg_catalog.btrim(p_reason),'');
+DECLARE v_actor uuid:=auth.uid(); v_sub public.subscriptions%ROWTYPE; v_today date; v_slot public.delivery_slots%ROWTYPE; v_local_time time; v_reason text:=NULLIF(pg_catalog.btrim(p_reason),'');
 BEGIN
   IF v_actor IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
   IF p_reason IS NOT NULL AND pg_catalog.length(p_reason)>300 THEN
@@ -192,6 +197,11 @@ BEGIN
     RAISE EXCEPTION 'Only active or paused subscriptions can be cancelled' USING ERRCODE='23514';
   END IF;
   v_today:=(pg_catalog.now() AT TIME ZONE 'Asia/Kolkata')::date;
+  v_local_time:=(pg_catalog.now() AT TIME ZONE 'Asia/Kolkata')::time;
+  SELECT ds.* INTO v_slot FROM public.delivery_slots ds WHERE ds.id=v_sub.delivery_slot_id;
+  IF v_sub.next_delivery_date<=v_today AND v_local_time>=v_slot.cancellation_deadline_time THEN
+    RAISE EXCEPTION 'The current delivery cutoff has passed; cancellation applies to future deliveries only' USING ERRCODE='23514';
+  END IF;
   IF EXISTS (SELECT 1 FROM public.subscription_deliveries d
     WHERE d.subscription_id=v_sub.id AND d.delivery_date=v_today
       AND d.status IN ('assigned','out_for_delivery')) THEN
