@@ -76,7 +76,7 @@ async function signupAndConfirm(page: Page, request: APIRequestContext) {
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Create account' }).click();
 
-  await expect(page.getByRole('status')).toContainText('confirmation link');
+  await expect(page.getByText(/confirmation link/i)).toBeVisible();
   const link = await confirmationLink(request, email);
   await page.goto(link);
   await expect(page).toHaveURL((url) => url.origin === appOrigin && url.pathname === '/account');
