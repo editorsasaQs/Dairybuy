@@ -80,8 +80,8 @@ export function SubscriptionDashboard() {
     {message ? <p role="status" aria-live="polite" className="rounded-2xl border border-border bg-white p-4 text-sm">{message}</p> : null}
     {data.subscriptions.length === 0 ? <div className="rounded-3xl border-2 border-white bg-white p-8 text-center shadow-sm">
       <h2 className="text-xl font-bold">No subscriptions yet</h2>
-      <p className="mt-2 text-sm text-muted-foreground">Your prepaid daily milk plans will appear here once online subscription checkout is available.</p>
-      <p className="mt-4 text-xs text-muted-foreground">Subscription payments are not yet enabled. No payment will be collected from this page.</p>
+      <p className="mt-2 text-sm text-muted-foreground">Your daily milk plans will appear here after you start a 7-day or 30-day subscription with cash on delivery for each delivery.</p>
+      <p className="mt-4 text-xs text-muted-foreground">No advance payment is collected. Pay the delivery amount in cash each time your milk arrives.</p>
     </div> : data.subscriptions.map((sub) => {
       const items = data.items.filter((item) => item.subscription_id === sub.id);
       const deliveries = data.deliveries.filter((item) => item.subscription_id === sub.id);
@@ -94,7 +94,7 @@ export function SubscriptionDashboard() {
           <span className="rounded-full bg-[#e7f6fc] px-3 py-1.5 text-xs font-bold capitalize">{sub.status.replaceAll("_", " ")}</span>
         </div>
         <div className="mt-5 grid gap-3 border-y border-border py-4 text-sm sm:grid-cols-3">
-          <div><p className="text-xs text-muted-foreground">Plan total</p><p className="mt-1 font-bold">{money(sub.total_paise)}</p></div>
+          <div><p className="text-xs text-muted-foreground">Scheduled plan value · not prepaid</p><p className="mt-1 font-bold">{money(sub.total_paise)}</p></div>
           <div><p className="text-xs text-muted-foreground">Next delivery</p><p className="mt-1 font-semibold">{dateLabel(sub.next_delivery_date)}</p></div>
           <div><p className="text-xs text-muted-foreground">Delivery slot</p><p className="mt-1 font-semibold">{slot ? slot.label + " · " + slot.start_time.slice(0,5) + "–" + slot.end_time.slice(0,5) : "As selected"}</p></div>
         </div>
@@ -117,8 +117,8 @@ export function SubscriptionDashboard() {
           {canSkip ? <button disabled={!!busy} onClick={() => { const date = window.prompt("Enter a future delivery date (YYYY-MM-DD)", sub.next_delivery_date || ""); if (date) void act(sub.id, "skip", { skipDate: date }); }} className="rounded-full border border-border px-4 py-2 text-sm font-semibold disabled:opacity-50">Skip a delivery</button> : null}
           {canManage ? <button disabled={!!busy} onClick={() => { if (window.confirm("Cancel this subscription? Future unassigned deliveries will stop. No automatic refund is created.")) void act(sub.id, "cancel", { reason: "Customer requested cancellation" }); }} className="rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">Cancel plan</button> : null}
         </div>
-        <h3 className="mt-5 text-sm font-bold">Delivery calendar</h3>
-        {deliveries.length ? <ol className="mt-2 grid gap-2 sm:grid-cols-2">{deliveries.map((delivery) => <li key={delivery.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3 text-sm"><span>{dateLabel(delivery.delivery_date)}</span><span className="rounded-full bg-[#f0f5f7] px-2.5 py-1 text-xs font-semibold capitalize">{delivery.status.replaceAll("_", " ")}</span></li>)}</ol> : <p className="mt-2 text-sm text-muted-foreground">Delivery entries will appear once your payment is verified and deliveries are generated.</p>}
+        <h3 className="mt-5 text-sm font-bold">Delivery calendar</h3><p className="mt-1 text-xs text-muted-foreground">Each delivered day is paid separately in cash. Confirm receipt below when your delivery is out for delivery.</p>
+        {deliveries.length ? <ol className="mt-2 grid gap-2 sm:grid-cols-2">{deliveries.map((delivery) => <li key={delivery.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-3 text-sm"><span>{dateLabel(delivery.delivery_date)}</span><span className="rounded-full bg-[#f0f5f7] px-2.5 py-1 text-xs font-semibold capitalize">{delivery.status.replaceAll("_", " ")}</span>{delivery.status === "out_for_delivery" ? <button disabled={!!busy} onClick={() => { if (window.confirm("Confirm that you have received this milk delivery?")) void act(sub.id, "confirm_delivery", { deliveryId: delivery.id }); }} className="rounded-full bg-[#216e49] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Confirm received</button> : null}</li>)}</ol> : <p className="mt-2 text-sm text-muted-foreground">Delivery entries will appear once your payment is verified and deliveries are generated.</p>}
       </article>;
     })}
   </section>;
