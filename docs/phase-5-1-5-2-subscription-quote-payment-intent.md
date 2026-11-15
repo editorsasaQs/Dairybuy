@@ -24,3 +24,14 @@ The repository does not yet have an approved online gateway or trusted payment w
 1. Phase 5.3 lifecycle RPCs: pause/resume/skip/vendor change/cancel with Kolkata cutoffs, immutable lifecycle events, row locks and ownership checks.
 2. Phase 5.4 delivery generation and operations: paid-active subscriptions only, daily idempotency, subscription delivery/order/reservation integration.
 3. Phase 5.5 customer/admin UI, delivery calendar, operational exception views, pgTAP and authenticated E2E lifecycle tests.
+
+## Phase 5.3 lifecycle controls added
+- Customer/owner-admin pause and resume RPCs with row locking; resume extends the plan end date by the paused calendar duration.
+- Future delivery skip RPC with customer-scoped idempotency, same-day configured cancellation cutoff, and a guard against assigned/in-progress deliveries. A skip consumes that scheduled plan day; it does not create a make-up day.
+- Cancellation RPC stops future unassigned scheduled deliveries and writes a lifecycle event. It does not create a refund.
+- Per-item future-effective vendor change ledger and RPC. New vendor must be approved, supply the same product/milk type, and have an identical current per-delivery price. This conservative guard prevents an unapproved mid-plan charge/refund or silent price change.
+- New lifecycle/vendor-change evidence tables have RLS, authenticated read policies and no direct authenticated write grants.
+- Added pgTAP contract coverage and CI step for lifecycle RPCs and permissions.
+
+### Important operational boundary
+Pause/skip/cancel/vendor-change RPCs are designed for subscriptions that have already become active through trusted payment verification. Since Phase 6 payment verification is not yet present, newly created Phase 5 subscriptions remain pending and cannot enter these lifecycle transitions until a trusted activation path is delivered.
