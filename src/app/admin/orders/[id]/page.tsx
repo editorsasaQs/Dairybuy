@@ -5,6 +5,7 @@ import { isAdminOrOwner } from "@/lib/services/auth-service";
 import { isValidOrderId } from "@/lib/services/admin-order-filters";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { OrderStatusActions } from "./OrderStatusActions";
+import { CodCollectionReview, type CodCollectionReviewRecord } from "./CodCollectionReview";
 import { parseOrderDeliveryAddressSnapshot } from "@/lib/services/order-address-snapshot";
 import { getInventoryAuditSeverity, resolveInventoryAuditLabels, summarizeInventoryAuditSeverity, type InventoryAuditProduct, type InventoryAuditVariant } from "@/lib/services/inventory-audit-labels";
 
@@ -50,14 +51,15 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
     .maybeSingle();
   if (error || !order) notFound();
 
-  const [itemsResult, slotResult, areaResult, historyResult, auditResult] = await Promise.all([
+  const [itemsResult, slotResult, areaResult, historyResult, auditResult, collectionResult] = await Promise.all([
     supabase.from("order_items").select("id,product_name_snapshot,variant_name_snapshot,brand_snapshot,pack_size_snapshot,vendor_name_snapshot,quantity,quantity_litres,unit_price_paise,total_price_paise").eq("order_id", order.id).order("id"),
     supabase.from("delivery_slots").select("label,start_time,end_time").eq("id", order.delivery_slot_id).maybeSingle(),
     supabase.from("service_areas").select("id,name,city,state").eq("id", order.service_area_id).maybeSingle(),
     supabase.from("order_status_history").select("from_status,to_status,changed_by,note,created_at").eq("order_id", order.id).order("created_at", { ascending: true }),
     supabase.rpc("audit_inventory_reservations"),
+    supabase.rpc("get_admin_cod_collection", { p_order_id: order.id }),
   ]);
-  if (itemsResult.error || slotResult.error || areaResult.error || historyResult.error) {
+  if (itemsResult.error || slotResult.error || areaResult.error || historyResult.error || collectionResult.error) {
     throw new Error("Unable to load order details.");
   }
 
@@ -79,6 +81,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
   const address = parseOrderDeliveryAddressSnapshot(order.delivery_address_snapshot);
   const slot = slotResult.data;
   const area = areaResult.data;
+  const codCollection = (collectionResult.data?.[0] ?? null) as CodCollectionReviewRecord | null;
 
   return (
     <main className="db-page py-(--section-y)">
@@ -156,6 +159,8 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
             </>
           )}
         </section>
+
+        <CodCollectionReview orderId={order.id} orderTotalPaise={order.total_paise} collection={codCollection} />
 
         <OrderStatusActions orderId={order.id} currentStatus={order.status} />
 
