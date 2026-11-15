@@ -123,7 +123,22 @@ jobs:
       # Starts a fresh local stack and applies only repository migrations.
       # No project ref, access token, DB password, or remote flag is supplied.
       - name: Start disposable local Supabase stack
-        run: supabase start
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "Starting disposable Supabase stack (attempt ${attempt}/3)"
+            if supabase start; then
+              exit 0
+            fi
+            echo "Supabase startup failed; cleaning partial containers before retry."
+            supabase stop --no-backup || true
+            if [[ "${attempt}" -lt 3 ]]; then
+              sleep $((attempt * 20))
+            fi
+          done
+          echo "::error::Supabase stack failed to start after three attempts."
+          exit 1
 
       - name: Run RBAC pgTAP regression test against local database
         run: supabase test db supabase/tests/database/rbac_customer_admin_boundary.test.sql
