@@ -148,6 +148,9 @@ jobs:
       - name: Run concurrent customer order cancellation regression
         run: bash supabase/tests/concurrency/customer-order-cancellation-concurrency.sh
 
+      - name: Run customer/admin delivery and cancellation lifecycle races
+        run: bash supabase/tests/concurrency/delivery-lifecycle-concurrency.sh
+
       - name: Stop disposable local Supabase stack
         if: always()
         run: supabase stop --no-backup
