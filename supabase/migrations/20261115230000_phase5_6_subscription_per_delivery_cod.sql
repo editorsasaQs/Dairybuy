@@ -3,6 +3,25 @@
 -- the one-time COD path. Every generated subscription delivery owns its own COD payment.
 BEGIN;
 
+-- A COD activation timestamp is distinct from online payment verification. The
+-- existing active-subscription guard accepts either trusted online verification
+-- or the authenticated COD activation RPC's timestamp.
+ALTER TABLE public.subscriptions
+  ADD COLUMN IF NOT EXISTS cod_activated_at timestamptz;
+ALTER TABLE public.subscriptions
+  DROP CONSTRAINT IF EXISTS chk_subscription_active_requires_verified_payment;
+ALTER TABLE public.subscriptions
+  ADD CONSTRAINT chk_subscription_active_requires_verified_payment
+  CHECK (
+    status NOT IN ('active','paused','completed')
+    OR payment_verified_at IS NOT NULL
+    OR cod_activated_at IS NOT NULL
+  ) NOT VALID;
+COMMENT ON COLUMN public.subscriptions.cod_activated_at IS
+  'Set only by the authenticated COD subscription checkout RPC. This is not an online payment verification timestamp.';
+COMMENT ON CONSTRAINT chk_subscription_active_requires_verified_payment ON public.subscriptions IS
+  'A subscription can be active, paused or completed only after trusted online verification or trusted COD activation.';
+
 -- Subscription-level payment row is an agreement marker for the COD plan total.
 -- Daily COD receivables are separate order-scoped payment rows.
 ALTER TABLE public.payments
@@ -42,6 +61,12 @@ BEGIN
   v_next:=pg_catalog.replace(v_def,
     '''pending_payment'',p_start_date','''active'',p_start_date');
   v_next:=pg_catalog.replace(v_next,
+    E'    subtotal_paise,discount_paise,total_paise,duration_days,idempotency_key,\n    address_snapshot,delivery_slot_snapshot',
+    E'    subtotal_paise,discount_paise,total_paise,duration_days,idempotency_key,\n    cod_activated_at,address_snapshot,delivery_slot_snapshot');
+  v_next:=pg_catalog.replace(v_next,
+    E'    (v_quote->>''total_paise'')::integer,(v_quote->>''duration_days'')::integer,p_idempotency_key,\n    v_quote->''address_snapshot'',v_quote->''delivery_slot_snapshot''',
+    E'    (v_quote->>''total_paise'')::integer,(v_quote->>''duration_days'')::integer,p_idempotency_key,\n    pg_catalog.now(),v_quote->''address_snapshot'',v_quote->''delivery_slot_snapshot''');
+  v_next:=pg_catalog.replace(v_next,
     '''pending_online'',''pending'',''online''','''cod'',''pending'',''cod''');
   v_next:=pg_catalog.replace(v_next,
     '''subscription.payment_intent.created''','''subscription.cod.activated''');
@@ -52,7 +77,9 @@ BEGIN
     '''Activates an idempotent COD subscription. Each future delivery is a separate pending COD receivable, recorded and verified independently.''');
   IF v_next=v_def
      OR pg_catalog.strpos(v_next, '''pending_payment'',p_start_date')>0
-     OR pg_catalog.strpos(v_next, '''pending_online'',''pending'',''online''')>0 THEN
+     OR pg_catalog.strpos(v_next, '''pending_online'',''pending'',''online''')>0
+     OR pg_catalog.strpos(v_next, 'cod_activated_at')=0
+     OR pg_catalog.strpos(v_next, 'pg_catalog.now(),v_quote->''address_snapshot''')=0 THEN
     RAISE EXCEPTION 'Subscription COD checkout patch did not match the expected source';
   END IF;
   EXECUTE v_next;
