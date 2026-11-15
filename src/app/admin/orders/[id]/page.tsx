@@ -6,7 +6,7 @@ import { isValidOrderId } from "@/lib/services/admin-order-filters";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { OrderStatusActions } from "./OrderStatusActions";
 import { parseOrderDeliveryAddressSnapshot } from "@/lib/services/order-address-snapshot";
-import { getInventoryAuditSeverity, resolveInventoryAuditLabels, summarizeInventoryAuditSeverity, type InventoryAuditArea, type InventoryAuditProduct, type InventoryAuditVariant } from "@/lib/services/inventory-audit-labels";
+import { getInventoryAuditSeverity, resolveInventoryAuditLabels, summarizeInventoryAuditSeverity, type InventoryAuditProduct, type InventoryAuditVariant } from "@/lib/services/inventory-audit-labels";
 
 type OrderAuditFinding = {
   audit_type: string;
