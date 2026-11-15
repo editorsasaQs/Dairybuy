@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DB_URL="${DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}"
+DB_URL="${DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:55432/postgres}"
 CUSTOMER="e1111111-1111-4111-8111-111111111111"
 ADMIN="e2222222-2222-4222-8222-222222222222"
 ADDRESS="e1111111-0000-4000-8000-000000000001"

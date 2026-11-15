@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Container } from "@/components/brand/Container";
 import { isAdminOrOwner } from "@/lib/services/auth-service";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { resolveInventoryAuditLabels, type InventoryAuditArea, type InventoryAuditProduct, type InventoryAuditVariant } from "@/lib/services/inventory-audit-labels";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -25,6 +26,20 @@ export default async function AdminInventoryAuditPage() {
   const { data: findings, error: auditError } = await supabase.rpc("audit_inventory_reservations");
   const auditAvailable = !auditError;
   const rows = findings ?? [];
+  const variantIds = [...new Set(rows.map((row) => row.product_variant_id))];
+  const areaIds = [...new Set(rows.flatMap((row) => row.service_area_id ? [row.service_area_id] : []))];
+
+  const [variantResult, areaResult] = await Promise.all([
+    supabase.from("product_variants").select("id,product_id,variant_name,pack_size,brand").in("id", variantIds),
+    supabase.from("service_areas").select("id,name,city").in("id", areaIds),
+  ]);
+  const variants = (variantResult.data ?? []) as InventoryAuditVariant[];
+  const productIds = [...new Set(variants.map((variant) => variant.product_id))];
+  const productResult = await supabase.from("products").select("id,name").in("id", productIds);
+  const products = (productResult.data ?? []) as InventoryAuditProduct[];
+  const areas = (areaResult.data ?? []) as InventoryAuditArea[];
+  const labelsAvailable = !variantResult.error && !productResult.error && !areaResult.error;
+  const displayRows = resolveInventoryAuditLabels(rows, variants, products, areas);
 
   return (
     <main className="db-page py-(--section-y)">
@@ -59,20 +74,21 @@ export default async function AdminInventoryAuditPage() {
               <p className="mt-1 text-3xl font-bold tabular-nums">{formatStock(rows.length)}</p>
               <p className="mt-2 text-xs text-muted-foreground">Read-only report. This page never repairs or adjusts stock automatically.</p>
             </section>
+            {!labelsAvailable ? <p role="status" className="mb-4 rounded-2xl border border-[#f1d9a8] bg-[#fff8e7] p-4 text-sm text-muted-foreground">Some catalogue details could not be resolved. Stable product and area IDs remain visible below; no inventory values were changed.</p> : null}
             <div className="grid gap-3">
-              {rows.map((row, index) => (
+              {displayRows.map((row, index) => (
                 <article key={`${row.audit_type}-${row.inventory_id}-${row.order_id ?? index}`} className="rounded-3xl border-2 border-white bg-white p-5 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{row.audit_type === "inventory_balance" ? "Inventory balance mismatch" : "Order reservation anomaly"}</p>
-                      <h2 className="mt-1 break-all font-bold">{row.product_variant_id}</h2>
+                      <h2 className="mt-1 font-bold">{row.productLabel}</h2><p className="mt-1 break-all text-xs text-muted-foreground">Variant ID: {row.productId}</p>
                     </div>
                     {row.order_id ? <Link href={`/admin/orders/${row.order_id}`} className="text-sm font-semibold text-highlight-ink underline">Open order</Link> : null}
                   </div>
                   <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
                     <div><dt className="text-xs text-muted-foreground">Recorded reserved stock</dt><dd className="mt-1 font-bold tabular-nums">{formatStock(row.recorded_reserved_stock)}</dd></div>
                     <div><dt className="text-xs text-muted-foreground">Ledger balance</dt><dd className="mt-1 font-bold tabular-nums">{formatStock(row.ledger_reserved_stock)}</dd></div>
-                    <div><dt className="text-xs text-muted-foreground">Service area ID</dt><dd className="mt-1 break-all font-medium">{row.service_area_id ?? "Not assigned"}</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Service area</dt><dd className="mt-1 font-medium">{row.areaLabel ?? (row.areaId ? "Area details unavailable" : "Not assigned")}</dd><dd className="mt-1 break-all text-xs text-muted-foreground">{row.areaId ?? "No area ID"}</dd></div>
                     <div><dt className="text-xs text-muted-foreground">Order status</dt><dd className="mt-1 font-medium capitalize">{row.order_status?.replaceAll("_", " ") ?? "Inventory level"}</dd></div>
                   </dl>
                   <p className="mt-4 rounded-xl bg-[#f8fbfc] p-3 text-sm text-muted-foreground">{row.detail}</p>

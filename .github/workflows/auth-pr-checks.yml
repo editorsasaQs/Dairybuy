@@ -1,5 +1,9 @@
 name: Auth PR checks
 
+concurrency:
+  group: dairybuy-auth-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -63,6 +67,8 @@ jobs:
           src/lib/bag.ts
           src/lib/services/auth-service.ts
           src/lib/services/order-address-snapshot.ts
+          src/lib/services/inventory-audit-labels.ts
+          src/lib/services/inventory-audit-labels.test.ts
           src/lib/services/order-address-snapshot.test.ts
           src/lib/services/__tests__/auth-and-security.test.ts
           src/lib/services/database-cart-service.ts
@@ -117,7 +123,35 @@ jobs:
       # Starts a fresh local stack and applies only repository migrations.
       # No project ref, access token, DB password, or remote flag is supplied.
       - name: Start disposable local Supabase stack
-        run: supabase start
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "Starting disposable Supabase stack (attempt ${attempt}/3)"
+            if supabase start; then
+              exit 0
+            fi
+            echo "Supabase startup failed; cleaning partial containers before retry."
+            supabase stop --no-backup || true
+            if [[ "${attempt}" -lt 3 ]]; then
+              sleep $((attempt * 20))
+            fi
+          done
+          echo "::error::Supabase stack failed to start after three attempts."
+          exit 1
+
+      - name: Export the configured local database URL for concurrency tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source <(supabase status -o env)
+          set +a
+          if [[ "${DB_URL:-}" != postgresql://*127.0.0.1:* && "${DB_URL:-}" != postgresql://*localhost:* ]]; then
+            echo "::error::Refusing non-loopback local database URL: ${DB_URL:-<missing>}"
+            exit 1
+          fi
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
 
       - name: Run RBAC pgTAP regression test against local database
         run: supabase test db supabase/tests/database/rbac_customer_admin_boundary.test.sql
@@ -163,7 +197,7 @@ jobs:
     # Supabase local stacks use fixed host ports; serialize this job after
     # database-rbac so both jobs cannot bind 54322/54321 concurrently.
     needs: database-rbac
-    if: ${{ !cancelled() && github.actor != 'github-actions[bot]' }}
+    if: ${{ success() && github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -206,12 +240,18 @@ jobs:
             exit 1
           fi
 
+          if [[ "${DB_URL:-}" != postgresql://*127.0.0.1:* && "${DB_URL:-}" != postgresql://*localhost:* ]]; then
+            echo "::error::Refusing non-loopback local database URL: ${DB_URL:-<missing>}"
+            exit 1
+          fi
+
           {
             echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY_VALUE"
             echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000"
             echo "PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000"
             echo "MAILPIT_API_URL=http://127.0.0.1:54324"
+            echo "DATABASE_URL=$DB_URL"
           } >> "$GITHUB_ENV"
 
       - name: Install locked dependencies
@@ -247,7 +287,7 @@ jobs:
       - name: Assert checkout validation created no commerce records
         shell: bash
         run: |
-          psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 <<'SQL'
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
           DO $assertions$
           BEGIN
             IF EXISTS (SELECT 1 FROM public.orders) THEN
