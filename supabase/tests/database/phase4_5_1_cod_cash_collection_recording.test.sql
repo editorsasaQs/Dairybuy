@@ -1,6 +1,6 @@
 -- Phase 4.5.1 COD cash collection recording security and contract regression.
 BEGIN;
-SELECT extensions.plan(17);
+SELECT extensions.plan(18);
 
 SELECT extensions.ok(
   to_regclass('public.delivery_assignment_orders') IS NOT NULL,
@@ -20,6 +20,13 @@ SELECT extensions.ok(
   to_regprocedure('private.record_cod_cash_collection(uuid,integer,uuid,uuid,text)') IS NOT NULL
   AND to_regprocedure('public.record_cod_cash_collection(uuid,integer,uuid,uuid,text)') IS NOT NULL,
   'private implementation and public RPC wrapper exist'
+);
+SELECT extensions.ok(
+  (SELECT prosecdef FROM pg_proc
+   WHERE oid='public.record_cod_cash_collection(uuid,integer,uuid,uuid,text)'::regprocedure)
+  AND (SELECT proconfig @> ARRAY['search_path=""'] FROM pg_proc
+   WHERE oid='public.record_cod_cash_collection(uuid,integer,uuid,uuid,text)'::regprocedure),
+  'public RPC wrapper is SECURITY DEFINER with empty search_path'
 );
 SELECT extensions.ok(
   NOT has_function_privilege('anon','public.record_cod_cash_collection(uuid,integer,uuid,uuid,text)','EXECUTE')
