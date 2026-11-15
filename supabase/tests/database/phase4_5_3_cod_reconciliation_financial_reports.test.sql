@@ -1,6 +1,6 @@
 -- Phase 4.5.3–4.5.5 COD discrepancy, handover and reporting security contract.
 BEGIN;
-SELECT extensions.plan(18);
+SELECT extensions.plan(20);
 
 SELECT extensions.ok(
   to_regclass('public.cod_collection_adjustments') IS NOT NULL,
@@ -113,6 +113,18 @@ SELECT extensions.ok(
   AND position('Only owner/admin' IN pg_get_functiondef(
     'private.review_delivery_cash_handover(uuid,text,text)'::regprocedure))>0,
   'handover expected cash is server-computed and acceptance is owner/admin-only'
+);
+
+SELECT extensions.ok(
+  to_regprocedure('private.correct_delivery_cash_handover(uuid,bigint,text,text)') IS NOT NULL
+  AND to_regprocedure('public.correct_delivery_cash_handover(uuid,bigint,text,text)') IS NOT NULL,
+  'owner/admin disputed-handover recount correction RPC exists'
+);
+SELECT extensions.ok(
+  to_regprocedure('private.get_my_unhanded_cod_collections()') IS NOT NULL
+  AND to_regprocedure('public.get_my_unhanded_cod_collections()') IS NOT NULL
+  AND position('auth.uid()' IN pg_get_functiondef('private.get_my_unhanded_cod_collections()'::regprocedure))>0,
+  'delivery staff can list only their own unhanded COD collections'
 );
 
 SELECT * FROM extensions.finish();
