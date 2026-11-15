@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DB_URL="${DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}"
+DB_URL="${DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:55432/postgres}"
 TEST_TABLE="public.phase442_inventory_concurrency_test"
 
 cleanup() {
