@@ -1296,21 +1296,27 @@ export type Database = {
       }
       subscription_skip_records: {
         Row: {
+          created_by: string | null
           id: string
+          idempotency_key: string | null
           reason: string | null
           requested_at: string
           skip_date: string
           subscription_id: string
         }
         Insert: {
+          created_by?: string | null
           id?: string
+          idempotency_key?: string | null
           reason?: string | null
           requested_at?: string
           skip_date: string
           subscription_id: string
         }
         Update: {
+          created_by?: string | null
           id?: string
+          idempotency_key?: string | null
           reason?: string | null
           requested_at?: string
           skip_date?: string
@@ -1374,6 +1380,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subscription_item_vendor_changes: {
+        Row: {
+          id: string; subscription_id: string; subscription_item_id: string;
+          old_vendor_id: string; new_vendor_id: string; effective_from: string;
+          idempotency_key: string; created_by: string; created_at: string;
+        }
+        Insert: {
+          id?: string; subscription_id: string; subscription_item_id: string;
+          old_vendor_id: string; new_vendor_id: string; effective_from: string;
+          idempotency_key: string; created_by: string; created_at?: string;
+        }
+        Update: {
+          id?: string; subscription_id?: string; subscription_item_id?: string;
+          old_vendor_id?: string; new_vendor_id?: string; effective_from?: string;
+          idempotency_key?: string; created_by?: string; created_at?: string;
+        }
+        Relationships: []
+      }
+      subscription_lifecycle_events: {
+        Row: {
+          id: string; subscription_id: string; actor_id: string | null;
+          event_type: string; effective_date: string | null; metadata: Json; created_at: string;
+        }
+        Insert: {
+          id?: string; subscription_id: string; actor_id?: string | null;
+          event_type: string; effective_date?: string | null; metadata?: Json; created_at?: string;
+        }
+        Update: {
+          id?: string; subscription_id?: string; actor_id?: string | null;
+          event_type?: string; effective_date?: string | null; metadata?: Json; created_at?: string;
+        }
+        Relationships: []
       }
       subscriptions: {
         Row: {
@@ -1706,6 +1745,26 @@ export type Database = {
       is_admin_or_owner: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
+      pause_subscription: {
+        Args: { p_subscription_id: string }
+        Returns: { subscription_id: string; subscription_status: Database["public"]["Enums"]["subscription_status_enum"]; was_replayed: boolean }[]
+      }
+      resume_subscription: {
+        Args: { p_subscription_id: string }
+        Returns: { subscription_id: string; subscription_status: Database["public"]["Enums"]["subscription_status_enum"]; new_end_date: string; was_replayed: boolean }[]
+      }
+      skip_subscription_delivery: {
+        Args: { p_subscription_id: string; p_skip_date: string; p_reason?: string | null; p_idempotency_key: string }
+        Returns: { subscription_id: string; skip_date: string; was_replayed: boolean }[]
+      }
+      cancel_subscription: {
+        Args: { p_subscription_id: string; p_reason?: string | null }
+        Returns: { subscription_id: string; subscription_status: Database["public"]["Enums"]["subscription_status_enum"]; was_replayed: boolean }[]
+      }
+      change_subscription_item_vendor: {
+        Args: { p_subscription_id: string; p_subscription_item_id: string; p_new_vendor_id: string; p_effective_from: string; p_idempotency_key: string }
+        Returns: { subscription_id: string; subscription_item_id: string; old_vendor_id: string; new_vendor_id: string; effective_from: string; was_replayed: boolean }[]
+      }
       quote_subscription: {
         Args: {
           p_address_id: string; p_delivery_slot_id: string; p_start_date: string;
