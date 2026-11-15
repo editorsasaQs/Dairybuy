@@ -1,6 +1,6 @@
 -- Phase 5.6 subscription COD: payment is collected per delivery, never prepaid as a plan.
 BEGIN;
-SELECT extensions.plan(13);
+SELECT extensions.plan(14);
 
 SELECT extensions.ok(
   EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.orders'::regclass
@@ -91,6 +91,18 @@ SELECT extensions.ok(
   AND NOT has_table_privilege('authenticated','public.cod_collections','UPDATE')
   AND NOT has_table_privilege('authenticated','public.payments','UPDATE'),
   'direct client writes remain revoked; COD operations use audited RPCs'
+);
+
+SELECT extensions.ok(
+  EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public'
+    AND table_name='subscriptions' AND column_name='cod_activated_at')
+  AND strpos(pg_get_functiondef('private.create_subscription_payment_intent(uuid,uuid,date,public.subscription_plan_enum,jsonb,uuid)'::regprocedure),
+    'cod_activated_at')>0
+  AND strpos(pg_get_constraintdef((SELECT oid FROM pg_constraint
+    WHERE conrelid='public.subscriptions'::regclass
+      AND conname='chk_subscription_active_requires_verified_payment')),
+    'cod_activated_at')>0,
+  'active COD subscriptions carry a trusted COD activation timestamp distinct from online payment verification'
 );
 
 SELECT * FROM extensions.finish();
