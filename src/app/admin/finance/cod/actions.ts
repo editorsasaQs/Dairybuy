@@ -69,10 +69,11 @@ export async function correctCashHandoverAction(formData: FormData) {
 
 export async function submitStaffCashHandoverAction(formData: FormData) {
   const collectionIds = formData.getAll("collectionIds").map(String);
-  const received = Number(formData.get("receivedAmountPaise"));
+  const receivedRupees = Number(formData.get("receivedAmountRupees"));
+  const received = Math.round(receivedRupees * 100);
   const idempotencyKey = String(formData.get("idempotencyKey") ?? "");
   if (!collectionIds.length || collectionIds.length > 200 || collectionIds.some((id) => !UUID.test(id))
-    || !Number.isSafeInteger(received) || received <= 0 || !UUID.test(idempotencyKey)) {
+    || !Number.isFinite(receivedRupees) || !Number.isSafeInteger(received) || received <= 0 || !UUID.test(idempotencyKey)) {
     throw new Error("Select collections and enter the cash amount handed over.");
   }
   const { supabase, user } = await currentUser();
