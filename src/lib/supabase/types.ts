@@ -1221,8 +1221,12 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          line_total_paise: number | null
           milk_type: Database["public"]["Enums"]["milk_type_enum"] | null
           price_per_delivery_paise: number
+          product_name_snapshot: string | null
+          variant_name_snapshot: string | null
+          vendor_name_snapshot: string | null
           product_variant_id: string
           quantity: number
           quantity_litres: number | null
@@ -1232,8 +1236,12 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          line_total_paise?: number | null
           milk_type?: Database["public"]["Enums"]["milk_type_enum"] | null
           price_per_delivery_paise: number
+          product_name_snapshot?: string | null
+          variant_name_snapshot?: string | null
+          vendor_name_snapshot?: string | null
           product_variant_id: string
           quantity: number
           quantity_litres?: number | null
@@ -1243,8 +1251,12 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          line_total_paise?: number | null
           milk_type?: Database["public"]["Enums"]["milk_type_enum"] | null
           price_per_delivery_paise?: number
+          product_name_snapshot?: string | null
+          variant_name_snapshot?: string | null
+          vendor_name_snapshot?: string | null
           product_variant_id?: string
           quantity?: number
           quantity_litres?: number | null
@@ -1365,15 +1377,22 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          address_snapshot: Json | null
           auto_renew: boolean
+          cancelled_at: string | null
           created_at: string
           customer_address_id: string
           customer_id: string
           delivery_slot_id: string
+          delivery_slot_snapshot: Json | null
           discount_paise: number
+          duration_days: number | null
           end_date: string | null
           id: string
+          idempotency_key: string | null
           next_delivery_date: string | null
+          paused_at: string | null
+          payment_verified_at: string | null
           plan_type: Database["public"]["Enums"]["subscription_plan_enum"]
           service_area_id: string
           start_date: string
@@ -1384,15 +1403,22 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address_snapshot?: Json | null
           auto_renew?: boolean
+          cancelled_at?: string | null
           created_at?: string
           customer_address_id: string
           customer_id: string
           delivery_slot_id: string
+          delivery_slot_snapshot?: Json | null
           discount_paise?: number
+          duration_days?: number | null
           end_date?: string | null
           id?: string
+          idempotency_key?: string | null
           next_delivery_date?: string | null
+          paused_at?: string | null
+          payment_verified_at?: string | null
           plan_type: Database["public"]["Enums"]["subscription_plan_enum"]
           service_area_id: string
           start_date: string
@@ -1403,15 +1429,22 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address_snapshot?: Json | null
           auto_renew?: boolean
+          cancelled_at?: string | null
           created_at?: string
           customer_address_id?: string
           customer_id?: string
           delivery_slot_id?: string
+          delivery_slot_snapshot?: Json | null
           discount_paise?: number
+          duration_days?: number | null
           end_date?: string | null
           id?: string
+          idempotency_key?: string | null
           next_delivery_date?: string | null
+          paused_at?: string | null
+          payment_verified_at?: string | null
           plan_type?: Database["public"]["Enums"]["subscription_plan_enum"]
           service_area_id?: string
           start_date?: string
@@ -1673,6 +1706,25 @@ export type Database = {
       is_admin_or_owner: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
+      quote_subscription: {
+        Args: {
+          p_address_id: string; p_delivery_slot_id: string; p_start_date: string;
+          p_plan_type: Database["public"]["Enums"]["subscription_plan_enum"]; p_items: Json;
+        }
+        Returns: Json
+      }
+      create_subscription_payment_intent: {
+        Args: {
+          p_address_id: string; p_delivery_slot_id: string; p_start_date: string;
+          p_plan_type: Database["public"]["Enums"]["subscription_plan_enum"];
+          p_items: Json; p_idempotency_key: string;
+        }
+        Returns: {
+          subscription_id: string; subscription_number: string; payment_id: string;
+          amount_paise: number; subscription_status: Database["public"]["Enums"]["subscription_status_enum"];
+          was_replayed: boolean;
+        }[]
+      }
       sync_active_cart: { Args: { p_items: Json }; Returns: string }
       create_cod_order: {
         Args: {
@@ -1825,7 +1877,7 @@ export type Database = {
         | "manage_customers"
         | "view_reports"
       subscription_plan_enum: "7_day" | "30_day" | "custom"
-      subscription_status_enum: "active" | "paused" | "cancelled" | "completed"
+      subscription_status_enum: "active" | "paused" | "cancelled" | "completed" | "pending_payment"
       user_role_enum:
         | "owner"
         | "admin"
