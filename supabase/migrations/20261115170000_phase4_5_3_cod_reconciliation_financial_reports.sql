@@ -102,6 +102,12 @@ BEGIN
     RAISE EXCEPTION 'COD payment does not match authoritative order total' USING ERRCODE='23514';
   END IF;
 
+  IF EXISTS (SELECT 1 FROM public.delivery_cash_handover_items hi
+      JOIN public.delivery_cash_handovers h ON h.id=hi.handover_id
+      WHERE hi.collection_id=v_collection.id AND h.status IN ('submitted','accepted')) THEN
+    RAISE EXCEPTION 'Collection cannot be adjusted after cash handover submission' USING ERRCODE='23514';
+  END IF;
+
   IF v_collection.status NOT IN ('disputed','rejected') OR v_payment.status <> 'pending'
      OR v_order.payment_status <> 'pending' THEN
     RAISE EXCEPTION 'Only unresolved disputed/rejected collections with pending payment can be adjusted' USING ERRCODE='23514';
@@ -278,7 +284,7 @@ BEGIN
   IF v_actor IS NULL OR NOT private.is_admin_or_owner() THEN
     RAISE EXCEPTION 'Only owner/admin can review cash handovers' USING ERRCODE='42501';
   END IF;
-  IF p_handover_id IS NULL OR p_decision NOT IN ('accept','dispute')
+  IF p_handover_id IS NULL OR p_decision IS NULL OR p_decision NOT IN ('accept','dispute')
      OR (p_decision='dispute' AND (v_note IS NULL OR pg_catalog.length(v_note)<5))
      OR (p_note IS NOT NULL AND pg_catalog.length(p_note)>500) THEN
     RAISE EXCEPTION 'Valid handover decision and reason are required' USING ERRCODE='22023';
@@ -286,7 +292,7 @@ BEGIN
   SELECT h.* INTO v_handover FROM public.delivery_cash_handovers h
     WHERE h.id=p_handover_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Handover not found' USING ERRCODE='P0002'; END IF;
-  IF v_handover.status=p_decision THEN
+  IF v_handover.status=CASE WHEN p_decision='accept' THEN 'accepted' ELSE 'disputed' END THEN
     RETURN QUERY SELECT v_handover.id,v_handover.status,true; RETURN;
   END IF;
   IF v_handover.status<>'submitted' THEN
