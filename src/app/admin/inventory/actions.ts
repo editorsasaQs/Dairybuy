@@ -7,6 +7,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/types";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export type InventoryActionState = { success: boolean; message: string };
+const failure = (message: string): InventoryActionState => ({ success: false, message });
 
 async function authorizedClient() {
   const supabase = await createSupabaseServerClient();
@@ -19,88 +21,96 @@ async function authorizedClient() {
   return supabase;
 }
 
-function textField(formData: FormData, name: string) {
+function field(formData: FormData, name: string) {
   const value = formData.get(name);
   return typeof value === "string" ? value.trim() : "";
 }
 
-export type InventoryActionState = { success: boolean; message: string };\n\nconst failure = (message: string): InventoryActionState => ({ success: false, message });\n\nexport async function receiveInventoryAction(_previous: InventoryActionState, formData: FormData): Promise<InventoryActionState> {
-  const vendorId = textField(formData, "vendorId");
-  const areaId = textField(formData, "areaId");
-  const vendorReference = textField(formData, "vendorReference");
-  const notes = textField(formData, "notes");
-  const idempotencyKey = textField(formData, "idempotencyKey");
-  const variantIds = formData.getAll("variantId").map(String);
-  const quantities = formData.getAll("quantity").map(String);
-  const costs = formData.getAll("unitCostRupees").map(String);
-
-  if (!vendorId || !UUID.test(areaId) || !UUID.test(idempotencyKey) || variantIds.length < 1 || variantIds.length > 100
-    || quantities.length !== variantIds.length || costs.length !== variantIds.length
-    || vendorReference.length > 120 || notes.length > 500) {
-    return failure("Complete the vendor, service area and valid receipt details.");
-  }
-
-  const items: Json[] = [];
-  const seen = new Set<string>();
-  for (let i = 0; i < variantIds.length; i++) {
-    const variantId = variantIds[i].trim();
-    const quantity = Number(quantities[i]);
-    const rupees = Number(costs[i]);
-    const unitCostPaise = Math.round(rupees * 100);
-    if (!variantId || seen.has(variantId) || !Number.isSafeInteger(quantity) || quantity <= 0
-      || !Number.isFinite(rupees) || rupees < 0 || !Number.isSafeInteger(unitCostPaise)) {
-      return failure("Each receipt line needs a unique SKU, positive whole quantity and valid non-negative unit cost.");
-    }
-    seen.add(variantId);
-    items.push({ product_variant_id: variantId, quantity, unit_cost_paise: unitCostPaise });
-  }
-
-  const supabase = await authorizedClient();
-  const { data, error } = await supabase.rpc("receive_inventory_stock", {
-    p_vendor_id: vendorId,
-    p_service_area_id: areaId,
-    p_vendor_reference: vendorReference || null,
-    p_notes: notes || null,
-    p_items: items,
-    p_idempotency_key: idempotencyKey,
-  });
-  if (error) throw new Error(error.message);
-  const result = data?.[0];
-  if (!result) throw new Error("The database returned no stock receipt.");
-  revalidatePath("/admin/inventory");
-  revalidatePath("/admin/inventory/audit");
-  redirect(`/admin/inventory?received=${encodeURIComponent(result.receipt_number)}`);
+function isRedirectError(error: unknown) {
+  return Boolean(error && typeof error === "object" && "digest" in error && String(error.digest).startsWith("NEXT_REDIRECT"));
 }
 
-export async function adjustInventoryAction(formData: FormData) {
-  const inventoryId = textField(formData, "inventoryId");
-  const adjustmentType = textField(formData, "adjustmentType");
-  const quantity = Number(textField(formData, "quantity"));
-  const reason = textField(formData, "reason");
-  const evidence = textField(formData, "evidenceReference");
-  const idempotencyKey = textField(formData, "idempotencyKey");
+export async function receiveInventoryAction(_previous: InventoryActionState, formData: FormData): Promise<InventoryActionState> {
+  try {
+    const vendorId = field(formData, "vendorId");
+    const areaId = field(formData, "areaId");
+    const vendorReference = field(formData, "vendorReference");
+    const notes = field(formData, "notes");
+    const idempotencyKey = field(formData, "idempotencyKey");
+    const variantIds = formData.getAll("variantId").map(String);
+    const quantities = formData.getAll("quantity").map(String);
+    const costs = formData.getAll("unitCostRupees").map(String);
 
-  if (!UUID.test(inventoryId) || !UUID.test(idempotencyKey)
-    || !["spoilage", "damage", "stocktake_adjustment"].includes(adjustmentType)
-    || !Number.isSafeInteger(quantity) || quantity === 0
-    || (adjustmentType !== "stocktake_adjustment" && quantity < 0)
-    || reason.length < 5 || reason.length > 500 || evidence.length > 200) {
-    return failure("Enter a valid adjustment type, quantity and reason. Spoilage/damage quantities must be positive.");
+    if (!vendorId || !UUID.test(areaId) || !UUID.test(idempotencyKey) || variantIds.length < 1 || variantIds.length > 100
+      || quantities.length !== variantIds.length || costs.length !== variantIds.length
+      || vendorReference.length > 120 || notes.length > 500) {
+      return failure("Complete the vendor, service area and valid receipt details.");
+    }
+
+    const items: Json[] = [];
+    const seen = new Set<string>();
+    for (let i = 0; i < variantIds.length; i++) {
+      const variantId = variantIds[i].trim();
+      const quantity = Number(quantities[i]);
+      const rupees = Number(costs[i]);
+      const unitCostPaise = Math.round(rupees * 100);
+      if (!variantId || seen.has(variantId) || !Number.isSafeInteger(quantity) || quantity <= 0
+        || !Number.isFinite(rupees) || rupees < 0 || !Number.isSafeInteger(unitCostPaise)) {
+        return failure("Each receipt line needs a unique SKU, positive whole quantity and valid non-negative unit cost.");
+      }
+      seen.add(variantId);
+      items.push({ product_variant_id: variantId, quantity, unit_cost_paise: unitCostPaise });
+    }
+
+    const supabase = await authorizedClient();
+    const { data, error } = await supabase.rpc("receive_inventory_stock", {
+      p_vendor_id: vendorId, p_service_area_id: areaId,
+      p_vendor_reference: vendorReference || null, p_notes: notes || null,
+      p_items: items, p_idempotency_key: idempotencyKey,
+    });
+    if (error) return failure(error.message);
+    const result = data?.[0];
+    if (!result) return failure("The database returned no stock receipt.");
+    revalidatePath("/admin/inventory");
+    revalidatePath("/admin/inventory/audit");
+    redirect(`/admin/inventory?received=${encodeURIComponent(result.receipt_number)}`);
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    return failure(error instanceof Error ? error.message : "Stock receipt could not be saved.");
   }
+}
 
-  const supabase = await authorizedClient();
-  const { data, error } = await supabase.rpc("adjust_inventory_stock", {
-    p_inventory_id: inventoryId,
-    p_adjustment_type: adjustmentType,
-    p_quantity: quantity,
-    p_reason: reason,
-    p_evidence_reference: evidence || null,
-    p_idempotency_key: idempotencyKey,
-  });
-  if (error) throw new Error(error.message);
-  const result = data?.[0];
-  if (!result) throw new Error("The database returned no stock adjustment.");
-  revalidatePath("/admin/inventory");
-  revalidatePath("/admin/inventory/audit");
-  redirect(`/admin/inventory?adjusted=${encodeURIComponent(result.adjustment_number)}`);
+export async function adjustInventoryAction(_previous: InventoryActionState, formData: FormData): Promise<InventoryActionState> {
+  try {
+    const inventoryId = field(formData, "inventoryId");
+    const adjustmentType = field(formData, "adjustmentType");
+    const quantity = Number(field(formData, "quantity"));
+    const reason = field(formData, "reason");
+    const evidence = field(formData, "evidenceReference");
+    const idempotencyKey = field(formData, "idempotencyKey");
+
+    if (!UUID.test(inventoryId) || !UUID.test(idempotencyKey)
+      || !["spoilage", "damage", "stocktake_adjustment"].includes(adjustmentType)
+      || !Number.isSafeInteger(quantity) || quantity === 0
+      || (adjustmentType !== "stocktake_adjustment" && quantity < 0)
+      || reason.length < 5 || reason.length > 500 || evidence.length > 200) {
+      return failure("Enter a valid adjustment type, quantity and reason. Spoilage/damage quantities must be positive.");
+    }
+
+    const supabase = await authorizedClient();
+    const { data, error } = await supabase.rpc("adjust_inventory_stock", {
+      p_inventory_id: inventoryId, p_adjustment_type: adjustmentType,
+      p_quantity: quantity, p_reason: reason,
+      p_evidence_reference: evidence || null, p_idempotency_key: idempotencyKey,
+    });
+    if (error) return failure(error.message);
+    const result = data?.[0];
+    if (!result) return failure("The database returned no stock adjustment.");
+    revalidatePath("/admin/inventory");
+    revalidatePath("/admin/inventory/audit");
+    redirect(`/admin/inventory?adjusted=${encodeURIComponent(result.adjustment_number)}`);
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    return failure(error instanceof Error ? error.message : "Stock adjustment could not be saved.");
+  }
 }
