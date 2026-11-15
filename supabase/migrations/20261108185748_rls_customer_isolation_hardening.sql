@@ -67,15 +67,19 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.profiles TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_roles TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.staff_permissions TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.customer_addresses TO authenticated;
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.inventory TO authenticated;
 GRANT SELECT, INSERT ON TABLE public.inventory_movements TO authenticated;
+
 GRANT SELECT, UPDATE ON TABLE public.orders TO authenticated;
 GRANT SELECT ON TABLE public.order_items TO authenticated;
 GRANT SELECT, INSERT ON TABLE public.order_status_history TO authenticated;
+
 GRANT SELECT, UPDATE ON TABLE public.notifications TO authenticated;
 GRANT SELECT, INSERT ON TABLE public.cod_collections TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.delivery_assignments TO authenticated;
 GRANT SELECT ON TABLE public.audit_logs TO authenticated;
+
 GRANT ALL PRIVILEGES ON TABLE public.audit_logs TO service_role;
 
 COMMIT;
