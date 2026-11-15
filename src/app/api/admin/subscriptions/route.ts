@@ -12,7 +12,10 @@ export async function POST(request: Request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ success: false, error: "Authentication required." }, { status: 401, headers });
     const { data: roles, error: roleError } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
-    const roleNames = (roles ?? []).map((row) => row.role);\n    const admin = !roleError && roleNames.some((role) => isAdminOrOwner(role));\n    const staff = !roleError && roleNames.some((role) => ["owner", "admin", "manager", "operations_staff"].includes(role));\n    if (!staff) return NextResponse.json({ success: false, error: "Authorized delivery staff access required." }, { status: 403, headers });
+    const roleNames = (roles ?? []).map((row) => row.role);
+    const admin = !roleError && roleNames.some((role) => isAdminOrOwner(role));
+    const staff = !roleError && roleNames.some((role) => ["owner", "admin", "manager", "operations_staff"].includes(role));
+    if (!staff) return NextResponse.json({ success: false, error: "Authorized delivery staff access required." }, { status: 403, headers });
     let body: unknown;
     try { body = await request.json(); } catch { return NextResponse.json({ success: false, error: "Invalid JSON." }, { status: 400, headers }); }
     if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ success: false, error: "Invalid request." }, { status: 400, headers });
