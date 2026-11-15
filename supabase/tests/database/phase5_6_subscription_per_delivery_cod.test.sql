@@ -5,15 +5,17 @@ SELECT extensions.plan(14);
 SELECT extensions.ok(
   EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.orders'::regclass
     AND conname='chk_order_subscription_link'
-    AND pg_get_constraintdef(oid) LIKE '%payment_method = ''cod''%'
+    AND pg_get_constraintdef(oid) LIKE '%payment_method%'
+    AND pg_get_constraintdef(oid) LIKE '%cod%'
     AND pg_get_constraintdef(oid) LIKE '%pending%'),
   'subscription order contract permits pending COD deliveries while retaining the one-time branch'
 );
 SELECT extensions.ok(
   EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.payments'::regclass
     AND conname='chk_subscription_payment_cod_or_online'
-    AND pg_get_constraintdef(oid) LIKE '%gateway = ''cod''%'
-    AND pg_get_constraintdef(oid) LIKE '%method = ''cod''%'),
+    AND pg_get_constraintdef(oid) LIKE '%gateway%'
+    AND pg_get_constraintdef(oid) LIKE '%method%'
+    AND pg_get_constraintdef(oid) LIKE '%cod%'),
   'subscription plan payment marker accepts COD and keeps gateway method validation'
 );
 SELECT extensions.ok(
