@@ -15,7 +15,7 @@ No hosted schema or migration history was changed by this work.
 
 The GitHub `main` migration directory had seven historical migrations whose filenames no longer matched versions recorded in `supabase_migrations.schema_migrations`. Several SQL bodies had also drifted from the exact SQL already applied to Dairybuy-dev. A normal migration push would therefore interpret some already-applied changes as pending and could replay schema operations.
 
-The seven canonical files in this branch are restored from the exact stored SQL for these already-applied versions:
+The seven canonical files in main are restored from the exact stored SQL for these already-applied versions:
 
 | Applied version | Canonical migration |
 |---|---|
@@ -52,6 +52,9 @@ These repository migrations are newer than the observed database ledger and are 
 - `20261115200000_phase5_subscription_lifecycle_controls`
 - `20261115210000_phase5_subscription_delivery_generation_and_operations`
 - `20261115220000_phase5_5_pause_reservation_release`
+- `20261115230000_phase5_6_subscription_per_delivery_cod`
+- `20261115240000_phase5_7_admin_customer_delivery_confirmation`
+- `20261115250000_phase4_6_1_physical_stock_ledger_receiving_adjustments`
 
 Apply them only after this branch passes the complete disposable-local Supabase migration/pgTAP, application CI, and authenticated E2E checks. Then verify the remote migration ledger and run Supabase security/performance advisors. Do not use a migration repair operation to mark these pending changes as applied.
 
@@ -67,7 +70,7 @@ Apply them only after this branch passes the complete disposable-local Supabase 
 ## Next release gates
 
 1. Pass CI and review this migration reconciliation PR.
-2. Apply the ten pending migrations to Dairybuy-dev in order, then verify the applied ledger and advisors.
+2. Apply the thirteen pending migrations to Dairybuy-dev in order, then verify the applied ledger and advisors.
 3. Deploy the reconciled main build to a protected Vercel Preview using the development database and server-only preview secrets; verify the customer/admin/staff flows and the cron endpoint with a non-production test.
 4. Create/activate a separate production Supabase project and configure production-only environment variables before any public production deployment.
 5. Select and configure the online payment gateway before Phase 6 webhook verification and paid subscription activation.

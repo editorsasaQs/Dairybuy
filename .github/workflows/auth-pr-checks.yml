@@ -219,6 +219,9 @@ jobs:
       - name: Run Phase 5.7 admin/customer delivery confirmation regression
         run: supabase test db supabase/tests/database/phase5_7_admin_customer_delivery_confirmation.test.sql
 
+      - name: Run Phase 4.6.1 physical stock ledger regression
+        run: supabase test db supabase/tests/database/phase4_6_1_physical_stock_ledger.test.sql
+
       - name: Run inventory reservation concurrency regression
         run: bash supabase/tests/concurrency/inventory-reservation-concurrency.sh
 

@@ -1,67 +1,68 @@
-# Dairybuy — Phase 4.4.6.5 Stage C and remaining delivery roadmap
+# Dairybuy — implementation status and remaining roadmap
 
-## Stage C: reservation reconciliation (this PR)
-This stage adds a read-only owner/admin RPC, `public.audit_inventory_reservations()`, and a pgTAP regression test.
+## Completed: Phase 4.4.6.5 — reservation reconciliation
+
+The owner/admin-only `public.audit_inventory_reservations()` RPC and pgTAP regression are implemented.
 
 It reports:
 - Inventory rows where `inventory.reserved_stock` differs from the net reservation ledger (`order_reservation + order_reservation_release + order_fulfilled`).
-- Per one-time COD order/inventory ledger anomalies: negative balance, missing outstanding reservation for an active order, outstanding balance after cancellation/delivery, or duplicate reservation/release/fulfillment movement types.
-- The current inventory counters, ledger balance, order status and explanatory detail.
+- Per-order reservation anomalies, including negative balances, missing outstanding reservations, residual balances after terminal states and duplicate movement types.
+- The affected SKU, service area, order status, counters and explanatory detail.
 
-The RPC is SECURITY DEFINER with an empty search path, requires the existing owner/admin guard, is executable only by authenticated callers (and denies non-owner/admin users inside the function), and is strictly read-only. It never changes stock or writes corrective movements.
+The RPC is SECURITY DEFINER with an empty search path, guarded by the owner/admin role check, authenticated-only, read-only and never auto-repairs stock.
 
-### Explicit accounting boundary
-This is a reservation-ledger audit, not a physical stocktake and not a full available-stock valuation. Initial inventory is seeded at zero and the current repository does not yet enforce all physical restock/spoilage/audit adjustments through a single movement RPC. Therefore it deliberately does not claim to reconcile `available_stock` to the movement ledger. A future stock-receiving/adjustment phase must make every on-hand change ledger-backed before that invariant can be safely asserted.
+## Completed: Phase 4.4.6.6 — owner/admin inventory audit UI
 
-## Stage C acceptance gates
-1. Fresh local Supabase migration succeeds.
-2. pgTAP confirms clean active/delivered/cancelled ledgers produce zero findings.
-3. pgTAP proves inventory-counter drift is detected.
-4. pgTAP proves duplicate fulfillment is reported at order and inventory level.
-5. Customer is denied; owner/admin can inspect.
-6. Audit call never mutates inventory.
-7. Full verify, database/concurrency and Auth E2E jobs pass.
+The page at `/admin/inventory/audit` consumes the reservation audit RPC and displays clean state/findings with SKU, service area, order reference and counter/ledger differences. It has role protection, loading/error/empty states and no automatic stock correction.
 
-## Remaining implementation sequence
+## Completed: Phase 4.5 — COD collection and reconciliation
 
-### Phase 4.4.6.6 — Inventory reconciliation UI and operational audit
-- Add an owner/admin-only admin page consuming the audit RPC.
-- Show clean state, findings, affected SKU/service area, order reference, recorded counter and ledger balance.
-- Link findings to the order detail screen.
-- No auto-repair. Any stock correction requires an explicit audited stock-adjustment workflow and a human-confirmed physical count.
-- Add empty/loading/error states, mobile layout, role-boundary tests and E2E coverage.
+- 4.5.1: order-scoped cash collection, assignment/owner authorization, idempotency and audit history.
+- 4.5.2: owner/admin verification or rejection; exact cash match is required before payment capture.
+- 4.5.3: discrepancy correction, cash handover ledger and financial reporting.
 
-### Phase 4.6 — Physical stock receiving and adjustments
-- Define opening balance and stock receiving from vendor/warehouse.
-- Add atomic owner/admin RPCs for restock, spoilage, damage, stocktake adjustment and correction.
-- Every on-hand quantity change must append an immutable movement with actor, reason, reference and timestamp.
-- Deterministic row locking, idempotency keys, non-negative constraints and audit history.
-- Reconcile available, reserved and safety stock with explicit formulas and pgTAP/concurrency coverage.
+One-time COD and subscription delivery COD remain separate order-scoped payment records.
 
-### Phase 4.7 — COD collection and settlement
-- Record cash collected by authorized delivery/admin staff against an order.
-- Enforce exact outstanding amount, one-time idempotency, actor/time, receipt/reference and audit history.
-- Keep order delivery status separate from payment collection status.
-- Daily cash handover and outstanding COD reconciliation; no online gateway in this phase.
+## Completed: Phase 5 / 5.6 / 5.7 — subscription lifecycle and per-delivery COD
 
-### Phase 5 — Subscription engine
-- 7-day and 30-day plans using the approved vendor-price plan fields.
-- Daily delivery generation with idempotency and duplicate-day protection.
-- Pause, skip, resume, expiry and cancellation rules.
-- Customer-selected milk vendor, delivery address/slot and area validation.
-- Subscription payment and delivery ledger, stock reservation policy, failure/retry handling.
-- Customer self-service and admin operational views.
+- 7-day and 30-day subscription quote/checkout with server-authoritative pricing.
+- Pause, resume, skip, cancel and vendor-change controls.
+- Daily delivery generation, stock reservation and failure/release handling.
+- Each subscription delivery has its own pending COD payment; the plan total is not prepaid.
+- Owner/admin can dispatch, mark delivered/failed, record cash, verify/reject and resolve discrepancies.
+- Customers can confirm receipt for their own dispatched delivery.
+- Launch has exactly two interfaces: customer and owner/admin. There is no delivery-agent UI.
 
-### Phase 6 — Online payment integration
-- Select gateway only after business approval.
-- Signed webhook verification, idempotent payment state transitions, refund reconciliation and COD/online separation.
-- Never trust client-side payment success.
+## Phase 4.6 — physical stock receiving and adjustments
 
-### Phase 7 — Production launch readiness
-- Hostinger domain to Vercel DNS/SSL and production environment verification.
-- Supabase production migration review, backups, RLS/security advisor, secrets and least privilege.
-- Monitoring, error reporting, rate limits, data retention, privacy/legal pages and support workflows.
-- End-to-end tests on real production-like staging, rollback plan and controlled Topsia pilot.
+### Phase 4.6.1 — immutable stock ledger and database operations (this PR)
+- Vendor receipt headers and per-SKU receipt lines, including received quantity and purchase cost.
+- Atomic owner/admin stock receiving, with idempotency and immutable `stock_receipt` movements.
+- Audited spoilage, damage and stocktake adjustments with signed movements.
+- Negative adjustments cannot consume units already reserved for customer orders.
+- Direct client stock writes are revoked; stock changes flow through trusted SECURITY DEFINER RPCs.
+- A read-only physical-stock audit reconciles `available_stock` to stock receipt/adjustment/fulfilment movements and `reserved_stock` to reservation movements.
 
-## Merge policy
-Each stage ships on its own branch and PR. Do not merge until lint, typecheck, unit/build, local Supabase migration + pgTAP, real concurrency scripts and Auth E2E are green. Never auto-correct inventory based on an audit report.
+### Phase 4.6.2 — owner/admin inventory receiving and adjustment UI
+- Build the inventory dashboard with stock on hand, reserved, free and safety quantities.
+- Add vendor receipt form with SKU lines, quantity, unit cost, reference and notes.
+- Add spoilage, damage and stocktake adjustment controls with reason/evidence and idempotent retries.
+- Show receipt and adjustment history. No staff-facing inventory interface.
+
+### Phase 4.6.3 — combined inventory audit and operational safeguards
+- Extend the existing inventory audit page to show physical on-hand and reserved-ledger findings together.
+- Add low-stock/safety-stock warnings and SKU/service-area filters.
+- Add role, no-negative-stock, idempotency, immutability, audit and concurrency tests.
+- Never auto-repair inventory from an audit finding; corrections require a physical count and an explicit adjustment.
+
+## Phase 6 — online payments (deferred)
+The launch checkout remains COD. Add UPI/card gateway only after the business selects a provider and supplies the required account/configuration. Implement signed webhook verification, idempotent settlement, refunds and COD/online separation. Never trust client-side payment success.
+
+## Phase 7 — production launch readiness
+- Apply ordered migrations to the dedicated production Supabase project only after review.
+- Configure separate production Vercel environment variables, cron secret, backups, monitoring and rollback.
+- Connect `dairybuy.com`, verify DNS/SSL and public deployment protection.
+- Run a production-like Topsia pilot with the customer and owner/admin interfaces only.
+
+## Merge and deployment policy
+Each stage ships on its own branch/PR. Required gates: lint, TypeScript, unit/build, fresh local Supabase migration + pgTAP, concurrency and authenticated E2E. Apply to Dairybuy-dev only after migration baseline reconciliation. Production remains untouched until a separate launch approval.
