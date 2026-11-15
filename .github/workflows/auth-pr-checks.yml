@@ -181,6 +181,9 @@ jobs:
       - name: Run Phase 4.4.6.3 customer/admin delivery completion regression
         run: supabase test db supabase/tests/database/phase4_4_6_3_customer_delivery_confirmation.test.sql
 
+      - name: Run Phase 4.5.1 COD cash collection authorization regression
+        run: supabase test db supabase/tests/database/phase4_5_1_cod_cash_collection.test.sql
+
       - name: Run inventory reservation concurrency regression
         run: bash supabase/tests/concurrency/inventory-reservation-concurrency.sh
 
