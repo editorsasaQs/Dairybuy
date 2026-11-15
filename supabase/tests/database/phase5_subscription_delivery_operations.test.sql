@@ -91,10 +91,10 @@ SELECT extensions.ok(
 SELECT extensions.ok(
   position('auth.role()' IN pg_get_functiondef('private.generate_subscription_deliveries(date)'::regprocedure))>0
   AND position('service_role' IN pg_get_functiondef('private.generate_subscription_deliveries(date)'::regprocedure))>0
-  AND position('payment_verified_at IS NOT NULL' IN pg_get_functiondef('private.generate_subscription_deliveries(date)'::regprocedure))>0
-  AND position('gateway_payment_id IS NOT NULL' IN pg_get_functiondef('private.generate_subscription_deliveries(date)'::regprocedure))>0
-  AND position('p.status=''captured''' IN pg_get_functiondef('private.generate_subscription_deliveries(date)'::regprocedure))>0,
-  'generator requires service role, trusted verification timestamp and captured gateway payment'
+  AND position('payment_verified_at IS NOT NULL' IN pg_get_functiondef('private.generate_subscription_deliveries(date)'::regprocedure))=0
+  AND position('gateway_payment_id IS NOT NULL' IN pg_get_functiondef('private.generate_subscription_deliveries(date)'::regprocedure))=0
+  AND position('INSERT INTO public.payments(order_id,amount_paise,currency,gateway,status,method)' IN pg_get_functiondef('private.generate_subscription_deliveries(date)'::regprocedure))>0,
+  'generator is service-role-only and creates a separate pending COD payment per delivery without online verification'
 );
 SELECT extensions.ok(
   position('FOR UPDATE OF s SKIP LOCKED' IN pg_get_functiondef('private.generate_subscription_deliveries(date)'::regprocedure))>0
