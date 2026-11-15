@@ -337,6 +337,131 @@ REVOKE ALL ON FUNCTION public.review_delivery_cash_handover(uuid,text,text)
   FROM PUBLIC,anon,service_role;
 GRANT EXECUTE ON FUNCTION public.review_delivery_cash_handover(uuid,text,text) TO authenticated;
 
+
+-- A disputed handover can be corrected only by an owner/admin after recount.
+CREATE TABLE IF NOT EXISTS public.delivery_cash_handover_adjustments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  handover_id uuid NOT NULL REFERENCES public.delivery_cash_handovers(id) ON DELETE RESTRICT,
+  old_received_amount_paise bigint NOT NULL CHECK (old_received_amount_paise > 0),
+  new_received_amount_paise bigint NOT NULL CHECK (new_received_amount_paise > 0),
+  reason text NOT NULL CHECK (pg_catalog.length(pg_catalog.btrim(reason)) BETWEEN 5 AND 500),
+  evidence_reference text CHECK (evidence_reference IS NULL OR pg_catalog.length(evidence_reference) <= 200),
+  created_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (old_received_amount_paise <> new_received_amount_paise)
+);
+CREATE INDEX IF NOT EXISTS idx_cash_handover_adjustments_batch
+  ON public.delivery_cash_handover_adjustments(handover_id,created_at DESC);
+REVOKE ALL ON TABLE public.delivery_cash_handover_adjustments FROM PUBLIC,anon,authenticated,service_role;
+
+CREATE OR REPLACE FUNCTION private.correct_delivery_cash_handover(
+  p_handover_id uuid,p_corrected_received_amount_paise bigint,p_reason text,p_evidence_reference text DEFAULT NULL
+)
+RETURNS TABLE(handover_id uuid,handover_status text,expected_amount_paise bigint,
+  received_amount_paise bigint,was_replayed boolean)
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
+AS $function$
+DECLARE
+  v_actor uuid:=auth.uid();
+  v_handover public.delivery_cash_handovers%ROWTYPE;
+  v_reason text:=NULLIF(pg_catalog.btrim(p_reason),'');
+  v_evidence text:=NULLIF(pg_catalog.btrim(p_evidence_reference),'');
+  v_existing public.delivery_cash_handover_adjustments%ROWTYPE;
+BEGIN
+  IF v_actor IS NULL OR NOT private.is_admin_or_owner() THEN
+    RAISE EXCEPTION 'Only owner/admin can correct a cash handover' USING ERRCODE='42501';
+  END IF;
+  IF p_handover_id IS NULL OR p_corrected_received_amount_paise IS NULL
+     OR p_corrected_received_amount_paise<=0 OR v_reason IS NULL
+     OR pg_catalog.length(v_reason)<5 OR pg_catalog.length(v_reason)>500
+     OR (p_evidence_reference IS NOT NULL AND pg_catalog.length(p_evidence_reference)>200) THEN
+    RAISE EXCEPTION 'Valid corrected cash amount, reason and evidence are required' USING ERRCODE='22023';
+  END IF;
+  SELECT h.* INTO v_handover FROM public.delivery_cash_handovers h
+    WHERE h.id=p_handover_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Handover not found' USING ERRCODE='P0002'; END IF;
+  SELECT a.* INTO v_existing FROM public.delivery_cash_handover_adjustments a
+    WHERE a.handover_id=v_handover.id AND a.new_received_amount_paise=p_corrected_received_amount_paise
+      AND a.reason=v_reason AND COALESCE(a.evidence_reference,'')=COALESCE(v_evidence,'')
+    ORDER BY a.created_at DESC LIMIT 1;
+  IF FOUND AND v_handover.received_amount_paise=p_corrected_received_amount_paise THEN
+    RETURN QUERY SELECT v_handover.id,v_handover.status,v_handover.expected_amount_paise,
+      v_handover.received_amount_paise,true;
+    RETURN;
+  END IF;
+  IF v_handover.status<>'disputed' THEN
+    RAISE EXCEPTION 'Only disputed handovers can be corrected' USING ERRCODE='23514';
+  END IF;
+  INSERT INTO public.delivery_cash_handover_adjustments(
+    handover_id,old_received_amount_paise,new_received_amount_paise,reason,evidence_reference,created_by
+  ) VALUES(v_handover.id,v_handover.received_amount_paise,p_corrected_received_amount_paise,
+    v_reason,v_evidence,v_actor);
+  UPDATE public.delivery_cash_handovers SET received_amount_paise=p_corrected_received_amount_paise,
+    status='submitted',reviewed_by=NULL,reviewed_at=NULL,review_note=NULL
+    WHERE id=v_handover.id;
+  INSERT INTO public.audit_logs(user_id,action,table_name,record_id,old_values,new_values)
+  VALUES(v_actor,'cod_cash_handover.corrected','delivery_cash_handovers',v_handover.id::text,
+    pg_catalog.jsonb_build_object('received_amount_paise',v_handover.received_amount_paise,'status',v_handover.status),
+    pg_catalog.jsonb_build_object('received_amount_paise',p_corrected_received_amount_paise,
+      'status','submitted','reason',v_reason,'evidence_reference',v_evidence));
+  RETURN QUERY SELECT v_handover.id,'submitted'::text,v_handover.expected_amount_paise,
+    p_corrected_received_amount_paise,false;
+END;
+$function$;
+REVOKE ALL ON FUNCTION private.correct_delivery_cash_handover(uuid,bigint,text,text)
+  FROM PUBLIC,anon,authenticated,service_role;
+CREATE OR REPLACE FUNCTION public.correct_delivery_cash_handover(
+  p_handover_id uuid,p_corrected_received_amount_paise bigint,p_reason text,p_evidence_reference text DEFAULT NULL
+)
+RETURNS TABLE(handover_id uuid,handover_status text,expected_amount_paise bigint,
+  received_amount_paise bigint,was_replayed boolean)
+LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path = ''
+AS $wrapper$
+  SELECT * FROM private.correct_delivery_cash_handover(
+    p_handover_id,p_corrected_received_amount_paise,p_reason,p_evidence_reference
+  );
+$wrapper$;
+REVOKE ALL ON FUNCTION public.correct_delivery_cash_handover(uuid,bigint,text,text)
+  FROM PUBLIC,anon,service_role;
+GRANT EXECUTE ON FUNCTION public.correct_delivery_cash_handover(uuid,bigint,text,text) TO authenticated;
+
+CREATE OR REPLACE FUNCTION private.get_my_unhanded_cod_collections()
+RETURNS TABLE(collection_id uuid,order_id uuid,order_number text,business_date date,
+  service_area_id uuid,service_area_name text,delivery_slot_id uuid,delivery_slot text,
+  amount_collected_paise integer,collection_status text,collected_at timestamptz)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
+AS $function$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  RETURN QUERY
+  SELECT c.id,o.id,o.order_number::text,o.delivery_date,o.service_area_id,sa.name::text,
+    o.delivery_slot_id,ds.label::text,c.amount_collected_paise,c.status,c.collected_at
+  FROM public.cod_collections c
+  JOIN public.orders o ON o.id=c.order_id
+  JOIN public.service_areas sa ON sa.id=o.service_area_id
+  JOIN public.delivery_slots ds ON ds.id=o.delivery_slot_id
+  JOIN public.delivery_assignment_orders dao ON dao.order_id=o.id
+  JOIN public.delivery_assignments da ON da.id=dao.delivery_assignment_id
+  WHERE c.collected_by_staff_id=auth.uid() AND da.staff_id=auth.uid()
+    AND da.delivery_date=o.delivery_date AND da.delivery_slot_id=o.delivery_slot_id
+    AND da.service_area_id=o.service_area_id AND o.status='delivered'
+    AND o.order_type='one_time' AND o.payment_method='cod'
+    AND NOT EXISTS (SELECT 1 FROM public.delivery_cash_handover_items hi WHERE hi.collection_id=c.id)
+  ORDER BY o.delivery_date DESC,c.collected_at DESC;
+END;
+$function$;
+REVOKE ALL ON FUNCTION private.get_my_unhanded_cod_collections() FROM PUBLIC,anon,authenticated,service_role;
+CREATE OR REPLACE FUNCTION public.get_my_unhanded_cod_collections()
+RETURNS TABLE(collection_id uuid,order_id uuid,order_number text,business_date date,
+  service_area_id uuid,service_area_name text,delivery_slot_id uuid,delivery_slot text,
+  amount_collected_paise integer,collection_status text,collected_at timestamptz)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $wrapper$
+  SELECT * FROM private.get_my_unhanded_cod_collections();
+$wrapper$;
+REVOKE ALL ON FUNCTION public.get_my_unhanded_cod_collections() FROM PUBLIC,anon,service_role;
+GRANT EXECUTE ON FUNCTION public.get_my_unhanded_cod_collections() TO authenticated;
+
 CREATE OR REPLACE FUNCTION private.get_admin_cod_financial_report(
   p_from_date date,p_to_date date,p_service_area_id uuid DEFAULT NULL,p_staff_id uuid DEFAULT NULL
 )
@@ -398,6 +523,7 @@ REVOKE ALL ON FUNCTION public.get_admin_cod_financial_report(date,date,uuid,uuid
   FROM PUBLIC,anon,service_role;
 GRANT EXECUTE ON FUNCTION public.get_admin_cod_financial_report(date,date,uuid,uuid) TO authenticated;
 
+COMMENT ON TABLE public.delivery_cash_handover_adjustments IS 'Append-only recount evidence for disputed cash handovers; corrections require owner/admin review.';
 COMMENT ON TABLE public.cod_collection_adjustments IS
 'Append-only owner/admin evidence ledger for COD cash count corrections. No write-off or refund is performed.';
 COMMENT ON TABLE public.delivery_cash_handovers IS
