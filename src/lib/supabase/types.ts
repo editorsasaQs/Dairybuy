@@ -1768,8 +1768,8 @@ export type Database = {
         Args: { p_from_date: string; p_to_date: string; p_service_area_id?: string | null; p_staff_id?: string | null }
         Returns: {
           order_id: string; order_number: string; business_date: string; service_area_id: string; service_area_name: string;
-          delivery_slot: string; staff_id: string; staff_name: string; collection_id: string; collection_status: string;
-          amount_collected_paise: number; order_total_paise: number; variance_paise: number; collected_at: string;
+          delivery_slot: string; staff_id: string | null; staff_name: string; collection_id: string | null; collection_status: string;
+          amount_collected_paise: number; order_total_paise: number; variance_paise: number; collected_at: string | null;
           handover_id: string | null; handover_number: string | null; handover_status: string | null;
           handover_expected_paise: number | null; handover_received_paise: number | null;
         }[]
