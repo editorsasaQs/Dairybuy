@@ -50,7 +50,7 @@ export async function receiveInventoryAction(_previous: InventoryActionState, fo
     const items: Json[] = [];
     const seen = new Set<string>();
     for (let i = 0; i < variantIds.length; i++) {
-      const variantId = variantIds[i].trim();
+      const variantId = variantIds[i]?.trim() ?? "";
       const quantity = Number(quantities[i]);
       const rupees = Number(costs[i]);
       const unitCostPaise = Math.round(rupees * 100);
@@ -65,7 +65,7 @@ export async function receiveInventoryAction(_previous: InventoryActionState, fo
     const supabase = await authorizedClient();
     const { data, error } = await supabase.rpc("receive_inventory_stock", {
       p_vendor_id: vendorId, p_service_area_id: areaId,
-      p_vendor_reference: vendorReference || null, p_notes: notes || null,
+      p_vendor_reference: vendorReference, p_notes: notes,
       p_items: items, p_idempotency_key: idempotencyKey,
     });
     if (error) return failure(error.message);
@@ -101,7 +101,7 @@ export async function adjustInventoryAction(_previous: InventoryActionState, for
     const { data, error } = await supabase.rpc("adjust_inventory_stock", {
       p_inventory_id: inventoryId, p_adjustment_type: adjustmentType,
       p_quantity: quantity, p_reason: reason,
-      p_evidence_reference: evidence || null, p_idempotency_key: idempotencyKey,
+      p_evidence_reference: evidence, p_idempotency_key: idempotencyKey,
     });
     if (error) return failure(error.message);
     const result = data?.[0];
