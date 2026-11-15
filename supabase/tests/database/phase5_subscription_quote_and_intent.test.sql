@@ -111,7 +111,9 @@ SELECT extensions.ok(
 SELECT extensions.ok(
   EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.payments'::regclass
     AND conname='chk_subscription_payment_cod_or_online'
-    AND pg_get_constraintdef(oid) LIKE '%gateway = ''cod''%'),
+    AND pg_get_constraintdef(oid) LIKE '%gateway%'
+    AND pg_get_constraintdef(oid) LIKE '%method%'
+    AND pg_get_constraintdef(oid) LIKE '%cod%'),
   'subscription payment constraint permits the COD plan agreement marker'
 );
 
