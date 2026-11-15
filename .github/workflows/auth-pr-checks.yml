@@ -22,7 +22,7 @@ on:
       - "tsconfig.json"
       - ".github/workflows/auth-pr-checks.yml"
   push:
-    branches: ["feature/supabase-auth-flow"]
+    branches: ["feature/supabase-auth-flow", "main"]
 
 # This workflow is verification-only. It must never push commits to a PR branch.
 permissions:
@@ -88,7 +88,11 @@ jobs:
           src/app/orders/[id]/page.tsx
           src/app/admin/orders/page.tsx
           src/app/admin/inventory/audit/page.tsx
+          src/app/admin/inventory/audit/loading.tsx
+          src/app/admin/inventory/audit/error.tsx
           src/app/admin/orders/[id]/page.tsx
+          src/app/admin/orders/[id]/loading.tsx
+          src/app/admin/orders/[id]/error.tsx
           src/lib/supabase/types.ts
           src/components/layout/SiteHeader.tsx
           playwright.config.ts
