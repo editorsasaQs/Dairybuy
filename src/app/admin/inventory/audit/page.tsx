@@ -83,13 +83,13 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
   return (
     <main className="db-page py-(--section-y)">
       <Container className="max-w-6xl">
-        <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
+        <div className="mb-6 flex flex-col gap-4 sm:mb-7 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-highlight-ink">Dairybuy operations</p>
             <h1 className="mt-2 text-3xl font-bold">Inventory audit</h1>
             <p className="mt-2 text-sm text-muted-foreground">Read-only reservation reconciliation · Owner and admin access only</p>
           </div>
-          <div className="flex flex-wrap gap-4 text-sm font-semibold">
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm font-semibold">
             <Link href="/admin/orders" className="text-highlight-ink underline">Order management</Link>
             <Link href="/account" className="text-highlight-ink underline">Back to account</Link>
           </div>
@@ -112,49 +112,49 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
               <p className="text-sm text-muted-foreground">Findings requiring review</p>
               <p className="mt-1 text-3xl font-bold tabular-nums">{formatStock(filteredRows.length)} <span className="text-sm font-medium text-muted-foreground">of {formatStock(rows.length)}</span></p>
               <p className="mt-2 text-xs text-muted-foreground">Read-only report. This page never repairs or adjusts stock automatically.</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl bg-[#f3f7f8] p-3"><p className="text-xs font-semibold text-muted-foreground">Total findings</p><p className="mt-1 text-xl font-bold tabular-nums">{formatStock(severitySummary.total)}</p></div>
-                <div className="rounded-2xl border border-[#f2c6c2] bg-[#fff3f1] p-3"><p className="text-xs font-semibold text-[#9f3028]">Critical</p><p className="mt-1 text-xl font-bold tabular-nums text-[#9f3028]">{formatStock(severitySummary.critical)}</p></div>
-                <div className="rounded-2xl border border-[#f1d9a8] bg-[#fff8e7] p-3"><p className="text-xs font-semibold text-[#805b18]">High</p><p className="mt-1 text-xl font-bold tabular-nums text-[#805b18]">{formatStock(severitySummary.high)}</p></div>
+              <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="min-w-0 rounded-2xl bg-[#f3f7f8] p-2 sm:p-3"><p className="text-[11px] font-semibold leading-tight text-muted-foreground sm:text-xs">Total findings</p><p className="mt-1 text-lg font-bold tabular-nums sm:text-xl">{formatStock(severitySummary.total)}</p></div>
+                <div className="min-w-0 rounded-2xl border border-[#f2c6c2] bg-[#fff3f1] p-2 sm:p-3"><p className="text-[11px] font-semibold leading-tight text-[#9f3028] sm:text-xs">Critical</p><p className="mt-1 text-xl font-bold tabular-nums text-[#9f3028]">{formatStock(severitySummary.critical)}</p></div>
+                <div className="min-w-0 rounded-2xl border border-[#f1d9a8] bg-[#fff8e7] p-2 sm:p-3"><p className="text-[11px] font-semibold leading-tight text-[#805b18] sm:text-xs">High</p><p className="mt-1 text-xl font-bold tabular-nums text-[#805b18]">{formatStock(severitySummary.high)}</p></div>
               </div>
             </section>
             {!labelsAvailable ? <p role="status" className="mb-4 rounded-2xl border border-[#f1d9a8] bg-[#fff8e7] p-4 text-sm text-muted-foreground">Some catalogue details could not be resolved. Stable product and area IDs remain visible below; no inventory values were changed.</p> : null}
-            <nav aria-label="Filter inventory audit by discrepancy type" className="mb-4 flex flex-wrap gap-2">
-              <Link href={auditHref(null, selectedArea, selectedProduct)} aria-current={selectedType ? undefined : "page"} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedType ? "border-[#dce5e8] bg-white text-muted-foreground" : "border-[#172f38] bg-[#172f38] text-white"}`}>
+            <nav aria-label="Filter inventory audit by discrepancy type" className="mb-4 -mx-1 flex w-[calc(100%+0.5rem)] flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <Link href={auditHref(null, selectedArea, selectedProduct)} aria-current={selectedType ? undefined : "page"} className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold ${selectedType ? "border-[#dce5e8] bg-white text-muted-foreground" : "border-[#172f38] bg-[#172f38] text-white"}`}>
                 All types ({rows.length})
               </Link>
               {availableTypes.map((type) => (
-                <Link key={type} href={auditHref(type, selectedArea, selectedProduct)} aria-current={selectedType === type ? "page" : undefined} className={`rounded-full border px-4 py-2 text-sm font-semibold capitalize ${selectedType === type ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
+                <Link key={type} href={auditHref(type, selectedArea, selectedProduct)} aria-current={selectedType === type ? "page" : undefined} className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold capitalize ${selectedType === type ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
                   {typeLabel(type)} ({rows.filter((row) => row.audit_type === type).length})
                 </Link>
               ))}
             </nav>
-            <nav aria-label="Filter inventory audit by service area" className="mb-4 flex flex-wrap gap-2">
-              <Link href={auditHref(selectedType, null, selectedProduct)} aria-current={selectedArea ? undefined : "page"} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedArea ? "border-[#dce5e8] bg-white text-muted-foreground" : "border-[#172f38] bg-[#172f38] text-white"}`}>
+            <nav aria-label="Filter inventory audit by service area" className="mb-4 -mx-1 flex w-[calc(100%+0.5rem)] flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <Link href={auditHref(selectedType, null, selectedProduct)} aria-current={selectedArea ? undefined : "page"} className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold ${selectedArea ? "border-[#dce5e8] bg-white text-muted-foreground" : "border-[#172f38] bg-[#172f38] text-white"}`}>
                 All areas ({typeFilteredRows.length})
               </Link>
               {availableAreas.map(([id, label]) => (
-                <Link key={id} href={auditHref(selectedType, id, selectedProduct)} aria-current={selectedArea === id ? "page" : undefined} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedArea === id ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
+                <Link key={id} href={auditHref(selectedType, id, selectedProduct)} aria-current={selectedArea === id ? "page" : undefined} className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold ${selectedArea === id ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
                   {label} ({typeFilteredRows.filter((row) => row.areaId === id).length})
                 </Link>
               ))}
               {hasUnassignedArea ? (
-                <Link href={auditHref(selectedType, "unassigned", selectedProduct)} aria-current={selectedArea === "unassigned" ? "page" : undefined} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedArea === "unassigned" ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
+                <Link href={auditHref(selectedType, "unassigned", selectedProduct)} aria-current={selectedArea === "unassigned" ? "page" : undefined} className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold ${selectedArea === "unassigned" ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
                   Unassigned ({typeFilteredRows.filter((row) => row.areaId === null).length})
                 </Link>
               ) : null}
             </nav>
-            <nav aria-label="Filter inventory audit by product" className="mb-4 flex flex-wrap gap-2">
-              <Link href={auditHref(selectedType, selectedArea, null)} aria-current={selectedProduct ? undefined : "page"} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedProduct ? "border-[#dce5e8] bg-white text-muted-foreground" : "border-[#172f38] bg-[#172f38] text-white"}`}>
+            <nav aria-label="Filter inventory audit by product" className="mb-4 -mx-1 flex w-[calc(100%+0.5rem)] flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <Link href={auditHref(selectedType, selectedArea, null)} aria-current={selectedProduct ? undefined : "page"} className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold ${selectedProduct ? "border-[#dce5e8] bg-white text-muted-foreground" : "border-[#172f38] bg-[#172f38] text-white"}`}>
                 All products ({areaFilteredRows.length})
               </Link>
               {availableProducts.map(([id, label]) => (
-                <Link key={id} href={auditHref(selectedType, selectedArea, id)} aria-current={selectedProduct === id ? "page" : undefined} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedProduct === id ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
+                <Link key={id} href={auditHref(selectedType, selectedArea, id)} aria-current={selectedProduct === id ? "page" : undefined} className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold ${selectedProduct === id ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
                   {label} ({areaFilteredRows.filter((row) => row.catalogProductId === id).length})
                 </Link>
               ))}
               {hasUnresolvedProduct ? (
-                <Link href={auditHref(selectedType, selectedArea, "unresolved")} aria-current={selectedProduct === "unresolved" ? "page" : undefined} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedProduct === "unresolved" ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
+                <Link href={auditHref(selectedType, selectedArea, "unresolved")} aria-current={selectedProduct === "unresolved" ? "page" : undefined} className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold ${selectedProduct === "unresolved" ? "border-[#172f38] bg-[#172f38] text-white" : "border-[#dce5e8] bg-white text-muted-foreground"}`}>
                   Unresolved ({areaFilteredRows.filter((row) => row.catalogProductId === null).length})
                 </Link>
               ) : null}
@@ -176,17 +176,17 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
                         <span className="text-xs text-muted-foreground">{row.audit_type.replaceAll("_", " ")}</span>
                       </div>
                       <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{row.audit_type === "inventory_balance" ? "Inventory balance mismatch" : "Order reservation anomaly"}</p>
-                      <h2 className="mt-1 font-bold">{row.productLabel}</h2><p className="mt-1 break-all text-xs text-muted-foreground">Variant ID: {row.productId}</p>
+                      <h2 className="mt-1 break-words font-bold">{row.productLabel}</h2><p className="mt-1 break-all text-xs text-muted-foreground">Variant ID: {row.productId}</p>
                     </div>
-                    {row.order_id ? <Link href={`/admin/orders/${row.order_id}`} className="text-sm font-semibold text-highlight-ink underline">Open {orderNumbers.get(row.order_id) ?? `order ${row.order_id.slice(0, 8)}`}</Link> : null}
+                    {row.order_id ? <Link href={`/admin/orders/${row.order_id}`} className="shrink-0 text-sm font-semibold text-highlight-ink underline">Open {orderNumbers.get(row.order_id) ?? `order ${row.order_id.slice(0, 8)}`}</Link> : null}
                   </div>
-                  <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                    <div><dt className="text-xs text-muted-foreground">Recorded reserved stock</dt><dd className="mt-1 font-bold tabular-nums">{formatStock(row.recorded_reserved_stock)}</dd></div>
-                    <div><dt className="text-xs text-muted-foreground">Ledger balance</dt><dd className="mt-1 font-bold tabular-nums">{formatStock(row.ledger_reserved_stock)}</dd></div>
-                    <div><dt className="text-xs text-muted-foreground">Service area</dt><dd className="mt-1 font-medium">{row.areaLabel ?? (row.areaId ? "Area details unavailable" : "Not assigned")}</dd><dd className="mt-1 break-all text-xs text-muted-foreground">{row.areaId ?? "No area ID"}</dd></div>
-                    <div><dt className="text-xs text-muted-foreground">Order status</dt><dd className="mt-1 font-medium capitalize">{row.order_status?.replaceAll("_", " ") ?? "Inventory level"}</dd></div>
+                  <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="min-w-0"><dt className="text-[11px] leading-tight text-muted-foreground sm:text-xs">Recorded reserved stock</dt><dd className="mt-1 font-bold tabular-nums">{formatStock(row.recorded_reserved_stock)}</dd></div>
+                    <div className="min-w-0"><dt className="text-[11px] leading-tight text-muted-foreground sm:text-xs">Ledger balance</dt><dd className="mt-1 font-bold tabular-nums">{formatStock(row.ledger_reserved_stock)}</dd></div>
+                    <div className="min-w-0"><dt className="text-[11px] leading-tight text-muted-foreground sm:text-xs">Service area</dt><dd className="mt-1 font-medium">{row.areaLabel ?? (row.areaId ? "Area details unavailable" : "Not assigned")}</dd><dd className="mt-1 break-all text-xs text-muted-foreground">{row.areaId ?? "No area ID"}</dd></div>
+                    <div className="min-w-0"><dt className="text-[11px] leading-tight text-muted-foreground sm:text-xs">Order status</dt><dd className="mt-1 font-medium capitalize">{row.order_status?.replaceAll("_", " ") ?? "Inventory level"}</dd></div>
                   </dl>
-                  <p className="mt-4 rounded-xl bg-[#f8fbfc] p-3 text-sm text-muted-foreground">{row.detail}</p>
+                  <p className="mt-4 break-words rounded-xl bg-[#f8fbfc] p-3 text-sm text-muted-foreground">{row.detail}</p>
                 </article>
               ))}
             </div>
