@@ -124,6 +124,9 @@ jobs:
       - name: Run Phase 4.4.2 inventory lock-order pgTAP regression
         run: supabase test db supabase/tests/database/phase4_4_2_inventory_lock_order.test.sql
 
+      - name: Run Phase 4.4.6.5 real milk SKU reservation regression
+        run: supabase test db supabase/tests/database/phase4_4_6_5_milk_sku_runtime.test.sql
+
       - name: Run Phase 4.4.4 cancellation RPC security regression
         run: supabase test db supabase/tests/database/phase4_4_4_order_cancellation.test.sql
 
