@@ -45,28 +45,28 @@ export async function POST(request: Request) {
     if (authError || !user) return NextResponse.json({ success: false, error: "Authentication required." }, { status: 401, headers });
     let body: unknown;
     try { body = await request.json(); } catch { return NextResponse.json({ success: false, error: "Invalid JSON." }, { status: 400, headers }); }
-    if (!isRecord(body) || typeof body.action !== "string" || !actions.has(body.action) ||
-        typeof body.subscriptionId !== "string" || !uuidPattern.test(body.subscriptionId)) {
+    if (!isRecord(body) || typeof body["action"] !== "string" || !actions.has(body["action"]) ||
+        typeof body["subscriptionId"] !== "string" || !uuidPattern.test(body["subscriptionId"])) {
       return NextResponse.json({ success: false, error: "A valid subscription action and ID are required." }, { status: 400, headers });
     }
-    const id = body.subscriptionId;
+    const id = body["subscriptionId"];
     let rpcName: string;
     let args: Record<string, string | null>;
-    switch (body.action) {
+    switch (body["action"]) {
       case "pause": rpcName = "pause_subscription"; args = { p_subscription_id: id }; break;
       case "resume": rpcName = "resume_subscription"; args = { p_subscription_id: id }; break;
       case "cancel":
-        if (body.reason !== undefined && (typeof body.reason !== "string" || body.reason.length > 300)) return NextResponse.json({ success: false, error: "Cancellation reason must be 300 characters or fewer." }, { status: 400, headers });
-        rpcName = "cancel_subscription"; args = { p_subscription_id: id, p_reason: typeof body.reason === "string" ? body.reason : null }; break;
+        if (body["reason"] !== undefined && (typeof body["reason"] !== "string" || body["reason"].length > 300)) return NextResponse.json({ success: false, error: "Cancellation reason must be 300 characters or fewer." }, { status: 400, headers });
+        rpcName = "cancel_subscription"; args = { p_subscription_id: id, p_reason: typeof body["reason"] === "string" ? body["reason"] : null }; break;
       case "skip":
-        if (typeof body.skipDate !== "string" || !datePattern.test(body.skipDate)) return NextResponse.json({ success: false, error: "Choose a valid delivery date." }, { status: 400, headers });
-        if (body.reason !== undefined && (typeof body.reason !== "string" || body.reason.length > 300)) return NextResponse.json({ success: false, error: "Skip reason must be 300 characters or fewer." }, { status: 400, headers });
+        if (typeof body["skipDate"] !== "string" || !datePattern.test(body["skipDate"])) return NextResponse.json({ success: false, error: "Choose a valid delivery date." }, { status: 400, headers });
+        if (body["reason"] !== undefined && (typeof body["reason"] !== "string" || body["reason"].length > 300)) return NextResponse.json({ success: false, error: "Skip reason must be 300 characters or fewer." }, { status: 400, headers });
         rpcName = "skip_subscription_delivery";
-        args = { p_subscription_id: id, p_skip_date: body.skipDate, p_reason: typeof body.reason === "string" ? body.reason : null, p_idempotency_key: crypto.randomUUID() }; break;
+        args = { p_subscription_id: id, p_skip_date: body["skipDate"], p_reason: typeof body["reason"] === "string" ? body["reason"] : null, p_idempotency_key: crypto.randomUUID() }; break;
       case "change_vendor":
-        if (typeof body.itemId !== "string" || !uuidPattern.test(body.itemId) || typeof body.vendorId !== "string" || !body.vendorId.trim() || body.vendorId.length > 100 || typeof body.effectiveFrom !== "string" || !datePattern.test(body.effectiveFrom)) return NextResponse.json({ success: false, error: "A valid item, vendor and future effective date are required." }, { status: 400, headers });
+        if (typeof body["itemId"] !== "string" || !uuidPattern.test(body["itemId"]) || typeof body["vendorId"] !== "string" || !body["vendorId"].trim() || body["vendorId"].length > 100 || typeof body["effectiveFrom"] !== "string" || !datePattern.test(body["effectiveFrom"])) return NextResponse.json({ success: false, error: "A valid item, vendor and future effective date are required." }, { status: 400, headers });
         rpcName = "change_subscription_item_vendor";
-        args = { p_subscription_id: id, p_subscription_item_id: body.itemId, p_new_vendor_id: body.vendorId, p_effective_from: body.effectiveFrom, p_idempotency_key: crypto.randomUUID() }; break;
+        args = { p_subscription_id: id, p_subscription_item_id: body["itemId"], p_new_vendor_id: body["vendorId"], p_effective_from: body["effectiveFrom"], p_idempotency_key: crypto.randomUUID() }; break;
       default: return NextResponse.json({ success: false, error: "Unsupported action." }, { status: 400, headers });
     }
     const { data, error } = await supabase.rpc(rpcName as never, args as never);
