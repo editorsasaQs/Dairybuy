@@ -198,8 +198,8 @@ jobs:
         run: supabase stop --no-backup
 
   auth-e2e:
-    # Supabase local stacks use fixed host ports; serialize this job after
-    # database-rbac so both jobs cannot bind 54322/54321 concurrently.
+    # Run after database-rbac to serialize local stacks. This job uses
+    # dedicated DB, shadow DB and SMTP ports to avoid runner port collisions.
     needs: database-rbac
     if: ${{ success() && github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
