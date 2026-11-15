@@ -98,8 +98,8 @@ CREATE POLICY inventory_read_admin ON public.inventory
 CREATE POLICY inventory_movements_read_admin ON public.inventory_movements
   FOR SELECT TO authenticated USING ((SELECT private.is_admin_or_owner()));
 
-REVOKE INSERT,UPDATE,DELETE ON TABLE public.inventory FROM authenticated;
-REVOKE INSERT,UPDATE,DELETE ON TABLE public.inventory_movements FROM authenticated;
+REVOKE INSERT,UPDATE,DELETE ON TABLE public.inventory FROM PUBLIC,anon,authenticated;
+REVOKE INSERT,UPDATE,DELETE ON TABLE public.inventory_movements FROM PUBLIC,anon,authenticated;
 
 CREATE OR REPLACE FUNCTION private.prevent_inventory_movement_mutation()
 RETURNS trigger
