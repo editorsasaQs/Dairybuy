@@ -91,6 +91,8 @@ jobs:
           src/app/admin/inventory/audit/loading.tsx
           src/app/admin/inventory/audit/error.tsx
           src/app/admin/orders/[id]/page.tsx
+          src/app/admin/orders/[id]/CodCollectionReview.tsx
+          src/app/admin/orders/[id]/cod-collection-actions.ts
           src/app/admin/orders/[id]/loading.tsx
           src/app/admin/orders/[id]/error.tsx
           src/lib/supabase/types.ts
