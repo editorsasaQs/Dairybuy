@@ -51,7 +51,7 @@ All thirteen forward migrations were applied successfully, in order:
 | `20261115131401` | `phase5_7_admin_customer_delivery_confirmation` |
 | `20261115131405` | `phase4_6_1_physical_stock_ledger_receiving_adjustments` |
 
-The repository migration filenames are being aligned to these exact applied versions so that a future `supabase db push` sees the same ledger.
+This PR aligns the repository migration filenames to these exact applied versions so that a future `supabase db push` sees the same ledger.
 
 ## Post-migration advisor findings
 
