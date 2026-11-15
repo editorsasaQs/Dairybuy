@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Subscription = {
   id: string; subscription_number: string; plan_type: string; status: string;
@@ -33,23 +33,29 @@ export function SubscriptionDashboard() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const load = useCallback(async () => {
-    try {
-      const [response, vendorResponse] = await Promise.all([
-        fetch("/api/subscriptions", { cache: "no-store" }),
-        fetch("/api/vendors/milk", { cache: "no-store" }),
-      ]);
-      const [payload, vendorPayload] = await Promise.all([response.json(), vendorResponse.json()]);
-      if (!response.ok || !payload.success) throw new Error(payload.error || "Unable to load subscriptions.");
-      setData(payload.data as Payload);
-      if (vendorResponse.ok && vendorPayload.success) setVendors(vendorPayload.data.vendors as Vendor[]);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to load subscriptions.");
-    } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [response, vendorResponse] = await Promise.all([
+          fetch("/api/subscriptions", { cache: "no-store" }),
+          fetch("/api/vendors/milk", { cache: "no-store" }),
+        ]);
+        const [payload, vendorPayload] = await Promise.all([response.json(), vendorResponse.json()]);
+        if (!response.ok || !payload.success) throw new Error(payload.error || "Unable to load subscriptions.");
+        if (cancelled) return;
+        setData(payload.data as Payload);
+        if (vendorResponse.ok && vendorPayload.success) setVendors(vendorPayload.data.vendors as Vendor[]);
+      } catch (error) {
+        if (!cancelled) setMessage(error instanceof Error ? error.message : "Unable to load subscriptions.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [refreshKey]);
 
   async function act(subscriptionId: string, action: string, extra: Record<string, string> = {}) {
     const key = subscriptionId + ":" + action;
@@ -62,7 +68,7 @@ export function SubscriptionDashboard() {
       const payload = await response.json();
       if (!response.ok || !payload.success) throw new Error(payload.error || "Action could not be completed.");
       setMessage("Subscription updated successfully.");
-      await load();
+      setRefreshKey((current) => current + 1);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Action could not be completed.");
     } finally { setBusy(null); }
