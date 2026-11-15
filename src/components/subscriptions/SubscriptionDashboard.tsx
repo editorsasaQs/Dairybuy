@@ -13,7 +13,7 @@ type Item = { id: string; subscription_id: string; product_name_snapshot: string
   quantity: number; quantity_litres: number | null; price_per_delivery_paise: number };
 type Delivery = { id: string; subscription_id: string; delivery_date: string; status: string;
   delivery_notes: string | null; order_id: string | null; delivery_slot_id: string };
-type Slot = { id: string; label: string; start_time: string; end_time: string };
+type Slot = { id: string; label: string; start_time: string; end_time: string };\ntype Vendor = { id: string; name: string; orderingEnabled: boolean; verifiedOptions: Array<{ type: string }> };
 type Payload = { subscriptions: Subscription[]; items: Item[]; deliveries: Delivery[]; slots: Slot[] };
 
 function money(paise: number) {
@@ -25,7 +25,7 @@ function dateLabel(value: string | null) {
 }
 
 export function SubscriptionDashboard() {
-  const [data, setData] = useState<Payload>({ subscriptions: [], items: [], deliveries: [], slots: [] });
+  const [data, setData] = useState<Payload>({ subscriptions: [], items: [], deliveries: [], slots: [] });\n  const [vendors, setVendors] = useState<Vendor[]>([]);\n  const [vendorChoice, setVendorChoice] = useState<Record<string, string>>({});\n  const [vendorDate, setVendorDate] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -89,6 +89,15 @@ export function SubscriptionDashboard() {
         <ul className="mt-2 space-y-2">{items.map((item) => <li key={item.id} className="flex flex-wrap justify-between gap-2 rounded-xl bg-[#f6fbfd] p-3 text-sm">
           <span>{item.product_name_snapshot || "Milk"} · {item.variant_name_snapshot || item.milk_type || "Milk"} <span className="text-muted-foreground">× {item.quantity} · {item.quantity_litres ?? "—"} L</span><span className="block text-xs text-muted-foreground">Vendor: {item.vendor_name_snapshot || "Selected vendor"}</span></span>
           <strong>{money(item.price_per_delivery_paise * item.quantity)}/day</strong>
+          {canManage && item.milk_type !== "canteen" ? <div className="w-full border-t border-border pt-3">
+            <p className="text-xs font-semibold">Schedule a vendor change</p>
+            <div className="mt-2 flex flex-wrap items-end gap-2">
+              <label className="grid gap-1 text-xs">New vendor<select value={vendorChoice[item.id] || ""} onChange={(event) => setVendorChoice((current) => ({ ...current, [item.id]: event.target.value }))} className="min-h-10 rounded-lg border border-border bg-white px-2 text-sm"><option value="">Choose approved vendor</option>{vendors.filter((vendor) => vendor.orderingEnabled && vendor.id !== item.vendor_id && vendor.verifiedOptions.some((option) => option.type === item.milk_type)).map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}</select></label>
+              <label className="grid gap-1 text-xs">Effective from<input type="date" min={new Date(Date.now() + 86400000).toISOString().slice(0,10)} value={vendorDate[item.id] || ""} onChange={(event) => setVendorDate((current) => ({ ...current, [item.id]: event.target.value }))} className="min-h-10 rounded-lg border border-border bg-white px-2 text-sm" /></label>
+              <button disabled={!!busy || !vendorChoice[item.id] || !vendorDate[item.id]} onClick={() => void act(sub.id, "change_vendor", { itemId: item.id, vendorId: vendorChoice[item.id], effectiveFrom: vendorDate[item.id] })} className="rounded-full border border-border px-3 py-2 text-xs font-semibold disabled:opacity-50">Schedule change</button>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">The new vendor must have the same approved milk type and identical current pricing. Existing deliveries stay unchanged.</p>
+          </div> : null}
         </li>)}</ul>
         <div className="mt-5 flex flex-wrap gap-2">
           {canManage ? sub.status === "active" ? <button disabled={!!busy} onClick={() => void act(sub.id, "pause")} className="rounded-full border border-border px-4 py-2 text-sm font-semibold disabled:opacity-50">{busy === sub.id + ":pause" ? "Pausing…" : "Pause plan"}</button> : <button disabled={!!busy} onClick={() => void act(sub.id, "resume")} className="rounded-full border border-border px-4 py-2 text-sm font-semibold disabled:opacity-50">{busy === sub.id + ":resume" ? "Resuming…" : "Resume plan"}</button> : null}
