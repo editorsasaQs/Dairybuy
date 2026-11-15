@@ -230,7 +230,7 @@ jobs:
         shell: bash
         run: |
           set -a
-          source <(supabase status -o env)
+          source <(supabase status --env --output-format text)
           set +a
 
           if [[ "${API_URL:-}" != http://127.0.0.1:* && "${API_URL:-}" != http://localhost:* ]]; then
