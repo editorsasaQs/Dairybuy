@@ -102,6 +102,15 @@ BEGIN
     RAISE EXCEPTION 'COD payment does not match authoritative order total' USING ERRCODE='23514';
   END IF;
 
+  SELECT a.* INTO v_existing FROM public.cod_collection_adjustments a
+  WHERE a.collection_id=v_collection.id AND a.new_amount_paise=p_corrected_amount_paise
+    AND a.reason=v_reason AND COALESCE(a.evidence_reference,'')=COALESCE(v_evidence,'')
+  ORDER BY a.created_at DESC LIMIT 1;
+  IF FOUND AND v_collection.amount_collected_paise=p_corrected_amount_paise THEN
+    RETURN QUERY SELECT v_collection.id,p_order_id,v_collection.status,v_payment.status,true;
+    RETURN;
+  END IF;
+
   IF EXISTS (SELECT 1 FROM public.delivery_cash_handover_items hi
       JOIN public.delivery_cash_handovers h ON h.id=hi.handover_id
       WHERE hi.collection_id=v_collection.id AND h.status IN ('submitted','accepted')) THEN
