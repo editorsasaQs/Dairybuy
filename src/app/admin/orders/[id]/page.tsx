@@ -84,22 +84,22 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
     <main className="db-page py-(--section-y)">
       <Container className="max-w-4xl">
         <Link href="/admin/orders" className="text-sm font-semibold text-highlight-ink underline">← Back to order queue</Link>
-        <div className="mt-5 flex flex-wrap items-start justify-between gap-4">
-          <div><p className="text-sm font-semibold text-highlight-ink">Dairybuy operations</p><h1 className="mt-2 text-3xl font-bold">{order.order_number}</h1><p className="mt-2 text-sm text-muted-foreground">Placed {formatTimestamp(order.created_at)} · Updated {formatTimestamp(order.updated_at)}</p></div>
+        <div className="mt-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-start sm:gap-4">
+          <div><p className="text-sm font-semibold text-highlight-ink">Dairybuy operations</p><h1 className="mt-2 break-words text-2xl font-bold sm:text-3xl">{order.order_number}</h1><p className="mt-2 text-sm text-muted-foreground">Placed {formatTimestamp(order.created_at)} · Updated {formatTimestamp(order.updated_at)}</p></div>
           <span className="rounded-full bg-[#e7f6fc] px-4 py-2 text-sm font-bold capitalize">{order.status.replaceAll("_", " ")}</span>
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <section className="rounded-3xl border-2 border-white bg-white p-5 shadow-sm">
+        <div className="mt-5 grid gap-3 sm:mt-6 sm:gap-4 md:grid-cols-2">
+          <section className="min-w-0 rounded-3xl border-2 border-white bg-white p-4 shadow-sm sm:p-5">
             <h2 className="font-bold">Customer and delivery address</h2>
-            {address ? <><p className="mt-3 font-semibold">{address.recipient_name} · {address.phone}</p><p className="mt-1 text-sm">{address.address_line1}{address.address_line2 ? `, ${address.address_line2}` : ""}{address.landmark ? `, ${address.landmark}` : ""}</p><p className="text-sm text-muted-foreground">{address.city}, {address.state} – {address.pincode}</p></> : <p className="mt-3 text-sm text-muted-foreground">Order address snapshot is unavailable.</p>}
+            {address ? <><p className="mt-3 break-words font-semibold">{address.recipient_name} · {address.phone}</p><p className="mt-1 text-sm">{address.address_line1}{address.address_line2 ? `, ${address.address_line2}` : ""}{address.landmark ? `, ${address.landmark}` : ""}</p><p className="text-sm text-muted-foreground">{address.city}, {address.state} – {address.pincode}</p></> : <p className="mt-3 text-sm text-muted-foreground">Order address snapshot is unavailable.</p>}
             <p className="mt-3 break-all text-xs text-muted-foreground">Customer ID: {order.customer_id}</p>
             <p className="mt-3 rounded-xl bg-[#fff8e7] p-3 text-xs text-muted-foreground">{order.delivery_address_snapshot_source === "legacy_reconstructed"
               ? "Reconstructed from the currently linked saved address during migration; this is not a verified checkout-time address."
               : "Captured and preserved atomically when the order was placed."}</p>
             {order.delivery_notes ? <p className="mt-3 text-sm">Delivery note: {order.delivery_notes}</p> : null}
           </section>
-          <section className="rounded-3xl border-2 border-white bg-white p-5 shadow-sm">
+          <section className="min-w-0 rounded-3xl border-2 border-white bg-white p-4 shadow-sm sm:p-5">
             <h2 className="font-bold">Delivery and payment</h2>
             <dl className="mt-3 space-y-3 text-sm">
               <div><dt className="text-muted-foreground">Delivery date</dt><dd className="font-semibold">{order.delivery_date ? formatDate(order.delivery_date) : "Not set"}</dd></div>
@@ -114,7 +114,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
         <section className="mt-4 rounded-3xl border-2 border-white bg-white p-5 shadow-sm">
           <h2 className="font-bold">Order items</h2>
           <ul className="mt-3 divide-y divide-border">
-            {(itemsResult.data ?? []).map((item) => <li key={item.id} className="flex flex-wrap justify-between gap-3 py-3 text-sm"><div><p className="font-semibold">{item.product_name_snapshot ?? "Dairybuy product"}</p><p className="text-xs text-muted-foreground">{[item.variant_name_snapshot,item.brand_snapshot,item.pack_size_snapshot,item.vendor_name_snapshot].filter(Boolean).join(" · ")} · Qty {item.quantity}{item.quantity_litres ? ` · ${item.quantity_litres} L` : ""}</p><p className="mt-1 text-xs text-muted-foreground">{formatInr(item.unit_price_paise)} each</p></div><p className="font-bold tabular-nums">{formatInr(item.total_price_paise)}</p></li>)}
+            {(itemsResult.data ?? []).map((item) => <li key={item.id} className="flex min-w-0 flex-wrap justify-between gap-3 py-3 text-sm"><div className="min-w-0 flex-1"><p className="break-words font-semibold">{item.product_name_snapshot ?? "Dairybuy product"}</p><p className="text-xs text-muted-foreground">{[item.variant_name_snapshot,item.brand_snapshot,item.pack_size_snapshot,item.vendor_name_snapshot].filter(Boolean).join(" · ")} · Qty {item.quantity}{item.quantity_litres ? ` · ${item.quantity_litres} L` : ""}</p><p className="mt-1 text-xs text-muted-foreground">{formatInr(item.unit_price_paise)} each</p></div><p className="shrink-0 text-right font-bold tabular-nums">{formatInr(item.total_price_paise)}</p></li>)}
           </ul>
           <dl className="mt-3 space-y-2 border-t border-border pt-4 text-sm"><div className="flex justify-between"><dt>Subtotal</dt><dd>{formatInr(order.subtotal_paise)}</dd></div><div className="flex justify-between"><dt>Delivery fee</dt><dd>{formatInr(order.delivery_fee_paise)}</dd></div><div className="flex justify-between text-base font-bold"><dt>Total</dt><dd>{formatInr(order.total_paise)}</dd></div></dl>
         </section>
@@ -130,20 +130,20 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
             <p className="mt-4 rounded-xl bg-[#f3f7f8] p-3 text-sm text-muted-foreground">No order-specific reservation ledger anomalies are currently reported by the read-only audit.</p>
           ) : (
             <>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl bg-[#f3f7f8] p-3"><p className="text-xs text-muted-foreground">Findings</p><p className="mt-1 text-xl font-bold tabular-nums">{orderAuditSummary.total}</p></div>
-                <div className="rounded-2xl border border-[#f2c6c2] bg-[#fff3f1] p-3"><p className="text-xs font-semibold text-[#9f3028]">Critical</p><p className="mt-1 text-xl font-bold tabular-nums text-[#9f3028]">{orderAuditSummary.critical}</p></div>
-                <div className="rounded-2xl border border-[#f1d9a8] bg-[#fff8e7] p-3"><p className="text-xs font-semibold text-[#805b18]">High</p><p className="mt-1 text-xl font-bold tabular-nums text-[#805b18]">{orderAuditSummary.high}</p></div>
+              <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="min-w-0 rounded-2xl bg-[#f3f7f8] p-2 sm:p-3"><p className="text-[11px] leading-tight text-muted-foreground sm:text-xs">Findings</p><p className="mt-1 text-lg font-bold tabular-nums sm:text-xl">{orderAuditSummary.total}</p></div>
+                <div className="min-w-0 rounded-2xl border border-[#f2c6c2] bg-[#fff3f1] p-2 sm:p-3"><p className="text-[11px] font-semibold leading-tight text-[#9f3028] sm:text-xs">Critical</p><p className="mt-1 text-xl font-bold tabular-nums text-[#9f3028]">{orderAuditSummary.critical}</p></div>
+                <div className="min-w-0 rounded-2xl border border-[#f1d9a8] bg-[#fff8e7] p-2 sm:p-3"><p className="text-[11px] font-semibold leading-tight text-[#805b18] sm:text-xs">High</p><p className="mt-1 text-xl font-bold tabular-nums text-[#805b18]">{orderAuditSummary.high}</p></div>
               </div>
               {!auditLabelsAvailable ? <p role="status" className="mt-3 text-xs text-muted-foreground">Some catalogue labels could not be resolved; stable variant IDs remain available.</p> : null}
               <ul className="mt-3 divide-y divide-border">
                 {orderAuditDisplayRows.map((finding, index) => (
-                  <li key={`${finding.inventory_id}-${index}`} className="py-4">
+                  <li key={`${finding.inventory_id}-${index}`} className="min-w-0 py-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-semibold">{finding.productLabel}</p>
+                      <p className="min-w-0 break-words font-semibold">{finding.productLabel}</p>
                       <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${getInventoryAuditSeverity(finding) === "critical" ? "bg-[#fff0ee] text-[#a12e25]" : "bg-[#fff7e6] text-[#805b18]"}`}>{getInventoryAuditSeverity(finding)} severity</span>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">Variant {finding.productId} · {finding.areaLabel ?? "Service area unavailable"} · {finding.order_status?.replaceAll("_", " ") ?? "Status unavailable"}</p>
+                    <p className="mt-1 break-all text-xs text-muted-foreground">Variant {finding.productId} · {finding.areaLabel ?? "Service area unavailable"} · {finding.order_status?.replaceAll("_", " ") ?? "Status unavailable"}</p>
                     <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
                       <div><dt className="text-xs text-muted-foreground">Recorded reserved stock</dt><dd className="font-bold tabular-nums">{finding.recorded_reserved_stock}</dd></div>
                       <div><dt className="text-xs text-muted-foreground">Order ledger balance</dt><dd className="font-bold tabular-nums">{finding.ledger_reserved_stock}</dd></div>
