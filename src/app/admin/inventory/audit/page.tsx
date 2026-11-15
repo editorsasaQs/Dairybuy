@@ -83,6 +83,7 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
   return (
     <main className="db-page py-(--section-y)">
       <Container className="max-w-6xl">
+        <a href="#audit-findings" className="sr-only rounded-lg bg-white px-4 py-2 font-semibold focus:not-sr-only focus:absolute focus:z-20">Skip to audit findings</a>
         <div className="mb-6 flex flex-col gap-4 sm:mb-7 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-highlight-ink">Dairybuy operations</p>
@@ -110,16 +111,16 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
           <>
             <section className="mb-5 rounded-3xl border-2 border-white bg-white p-5 shadow-sm">
               <p className="text-sm text-muted-foreground">Findings requiring review</p>
-              <p className="mt-1 text-3xl font-bold tabular-nums">{formatStock(filteredRows.length)} <span className="text-sm font-medium text-muted-foreground">of {formatStock(rows.length)}</span></p>
+              <p role="status" aria-live="polite" aria-atomic="true" className="mt-1 text-3xl font-bold tabular-nums">{formatStock(filteredRows.length)} <span className="text-sm font-medium text-muted-foreground">of {formatStock(rows.length)}</span></p>
               <p className="mt-2 text-xs text-muted-foreground">Read-only report. This page never repairs or adjusts stock automatically.</p>
-              <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+              <div role="group" aria-label="Discrepancy severity summary" className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
                 <div className="min-w-0 rounded-2xl bg-[#f3f7f8] p-2 sm:p-3"><p className="text-[11px] font-semibold leading-tight text-muted-foreground sm:text-xs">Total findings</p><p className="mt-1 text-lg font-bold tabular-nums sm:text-xl">{formatStock(severitySummary.total)}</p></div>
                 <div className="min-w-0 rounded-2xl border border-[#f2c6c2] bg-[#fff3f1] p-2 sm:p-3"><p className="text-[11px] font-semibold leading-tight text-[#9f3028] sm:text-xs">Critical</p><p className="mt-1 text-xl font-bold tabular-nums text-[#9f3028]">{formatStock(severitySummary.critical)}</p></div>
                 <div className="min-w-0 rounded-2xl border border-[#f1d9a8] bg-[#fff8e7] p-2 sm:p-3"><p className="text-[11px] font-semibold leading-tight text-[#805b18] sm:text-xs">High</p><p className="mt-1 text-xl font-bold tabular-nums text-[#805b18]">{formatStock(severitySummary.high)}</p></div>
               </div>
             </section>
             {!labelsAvailable ? <p role="status" className="mb-4 rounded-2xl border border-[#f1d9a8] bg-[#fff8e7] p-4 text-sm text-muted-foreground">Some catalogue details could not be resolved. Stable product and area IDs remain visible below; no inventory values were changed.</p> : null}
-            <nav aria-label="Filter inventory audit by discrepancy type" className="mb-4 -mx-1 flex w-[calc(100%+0.5rem)] flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <nav aria-label="Filter inventory audit by discrepancy type" tabIndex={0} className="mb-4 -mx-1 flex w-[calc(100%+0.5rem)] flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <Link href={auditHref(null, selectedArea, selectedProduct)} aria-current={selectedType ? undefined : "page"} className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold ${selectedType ? "border-[#dce5e8] bg-white text-muted-foreground" : "border-[#172f38] bg-[#172f38] text-white"}`}>
                 All types ({rows.length})
               </Link>
@@ -129,7 +130,7 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
                 </Link>
               ))}
             </nav>
-            <nav aria-label="Filter inventory audit by service area" className="mb-4 -mx-1 flex w-[calc(100%+0.5rem)] flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <nav aria-label="Filter inventory audit by service area" tabIndex={0} className="mb-4 -mx-1 flex w-[calc(100%+0.5rem)] flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <Link href={auditHref(selectedType, null, selectedProduct)} aria-current={selectedArea ? undefined : "page"} className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold ${selectedArea ? "border-[#dce5e8] bg-white text-muted-foreground" : "border-[#172f38] bg-[#172f38] text-white"}`}>
                 All areas ({typeFilteredRows.length})
               </Link>
@@ -144,7 +145,7 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
                 </Link>
               ) : null}
             </nav>
-            <nav aria-label="Filter inventory audit by product" className="mb-4 -mx-1 flex w-[calc(100%+0.5rem)] flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <nav aria-label="Filter inventory audit by product" tabIndex={0} className="mb-4 -mx-1 flex w-[calc(100%+0.5rem)] flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <Link href={auditHref(selectedType, selectedArea, null)} aria-current={selectedProduct ? undefined : "page"} className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold ${selectedProduct ? "border-[#dce5e8] bg-white text-muted-foreground" : "border-[#172f38] bg-[#172f38] text-white"}`}>
                 All products ({areaFilteredRows.length})
               </Link>
@@ -166,13 +167,13 @@ export default async function AdminInventoryAuditPage({ searchParams }: { search
                 <Link href={auditHref(null, null, null)} className="mt-3 inline-block font-semibold text-highlight-ink underline">Clear filters</Link>
               </section>
             ) : (
-            <div className="grid gap-3">
+            <div id="audit-findings" aria-label="Inventory audit findings" className="grid gap-3">
               {filteredRows.map((row, index) => (
                 <article key={`${row.audit_type}-${row.inventory_id}-${row.order_id ?? index}`} className="rounded-3xl border-2 border-white bg-white p-5 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${getInventoryAuditSeverity(row) === "critical" ? "bg-[#fff0ee] text-[#a12e25]" : "bg-[#fff7e6] text-[#805b18]"}`}>{getInventoryAuditSeverity(row)} severity</span>
+                        <span role="status" aria-label={`${getInventoryAuditSeverity(row)} severity`} className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${getInventoryAuditSeverity(row) === "critical" ? "bg-[#fff0ee] text-[#a12e25]" : "bg-[#fff7e6] text-[#805b18]"}`}>{getInventoryAuditSeverity(row)} severity</span>
                         <span className="text-xs text-muted-foreground">{row.audit_type.replaceAll("_", " ")}</span>
                       </div>
                       <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{row.audit_type === "inventory_balance" ? "Inventory balance mismatch" : "Order reservation anomaly"}</p>
