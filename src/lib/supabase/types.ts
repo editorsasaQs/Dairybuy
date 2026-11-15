@@ -2373,7 +2373,7 @@ export type Database = {
       correct_delivery_cash_handover: {
         Args: {
           p_corrected_received_amount_paise: number
-          p_evidence_reference?: string
+          p_evidence_reference?: string | null
           p_handover_id: string
           p_reason: string
         }
@@ -2389,7 +2389,7 @@ export type Database = {
         Args: {
           p_address_id: string
           p_delivery_date: string
-          p_delivery_notes?: string
+          p_delivery_notes?: string | null
           p_delivery_slot_id: string
           p_idempotency_key: string
         }
@@ -2455,8 +2455,8 @@ export type Database = {
       get_admin_cod_financial_report: {
         Args: {
           p_from_date: string
-          p_service_area_id?: string
-          p_staff_id?: string
+          p_service_area_id?: string | null
+          p_staff_id?: string | null
           p_to_date: string
         }
         Returns: {
@@ -2549,9 +2549,9 @@ export type Database = {
       record_cod_cash_collection: {
         Args: {
           p_amount_collected_paise: number
-          p_collection_notes?: string
+          p_collection_notes?: string | null
           p_order_id: string
-          p_receipt_reference?: string
+          p_receipt_reference?: string | null
         }
         Returns: {
           amount_collected_paise: number
@@ -2564,7 +2564,7 @@ export type Database = {
       resolve_cod_collection_discrepancy: {
         Args: {
           p_corrected_amount_paise: number
-          p_evidence_reference?: string
+          p_evidence_reference?: string | null
           p_order_id: string
           p_reason: string
         }
@@ -2647,7 +2647,7 @@ export type Database = {
       transition_one_time_cod_order: {
         Args: {
           p_next_status: Database["public"]["Enums"]["order_status_enum"]
-          p_note?: string
+          p_note?: string | null
           p_order_id: string
         }
         Returns: {
