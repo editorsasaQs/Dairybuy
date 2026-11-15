@@ -1,6 +1,6 @@
 -- Phase 4.6.1 physical stock receiving, adjustments and immutable ledger.
 BEGIN;
-SELECT extensions.plan(24);
+SELECT extensions.plan(26);
 
 SELECT extensions.ok(
   to_regclass('public.inventory_receipts') IS NOT NULL
@@ -179,11 +179,11 @@ SELECT extensions.is(
     AND service_area_id='00000000-0000-0000-0000-000000000001')),
  0,'physical and reservation movement ledgers reconcile after receipt and adjustments'
 );
+RESET ROLE;
 SELECT extensions.throws_ok(
- $$UPDATE public.inventory_movements SET notes='tampered' WHERE movement_type='stock_receipt'$$,
+ $UPDATE public.inventory_movements SET notes='tampered' WHERE movement_type='stock_receipt'$,
  '55000',NULL,'inventory movement rows cannot be edited after creation'
 );
-RESET ROLE;
 
 SELECT set_config('request.jwt.claim.sub','d4610000-2222-4222-8222-222222222222',true);
 SELECT set_config('request.jwt.claims','{"sub":"d4610000-2222-4222-8222-222222222222","role":"authenticated"}',true);
